@@ -9,7 +9,7 @@ const GameControls = ({
   isPlaying,
   disabled 
 }) => {
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(true); // Visible par défaut
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [selectedStrategy, setSelectedStrategy] = useState('frequency');
 
@@ -25,7 +25,10 @@ const GameControls = ({
           <h2 className="text-xl font-bold">Contrôles</h2>
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              showSettings ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100'
+            }`}
+            title={showSettings ? "Masquer les paramètres" : "Afficher les paramètres"}
           >
             <Settings size={20} />
           </button>
@@ -42,8 +45,8 @@ const GameControls = ({
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isPlaying}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={disabled}
               >
                 {languages && languages.map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -51,6 +54,9 @@ const GameControls = ({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Changez avant de démarrer une nouvelle partie
+              </p>
             </div>
 
             <div>
@@ -61,15 +67,20 @@ const GameControls = ({
               <select
                 value={selectedStrategy}
                 onChange={(e) => setSelectedStrategy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isPlaying}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={disabled}
               >
                 {strategies && strategies.map((strategy) => (
                   <option key={strategy.id} value={strategy.id}>
-                    {strategy.name} - {strategy.description}
+                    {strategy.name}
                   </option>
                 ))}
               </select>
+              {strategies && strategies.find(s => s.id === selectedStrategy) && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {strategies.find(s => s.id === selectedStrategy).description}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -105,6 +116,24 @@ const GameControls = ({
             </button>
           )}
         </div>
+
+        {/* Configuration actuelle */}
+        {!showSettings && (
+          <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
+            <div className="flex items-center gap-1">
+              <Globe size={12} />
+              <span className="font-medium">
+                {languages?.find(l => l.code === selectedLanguage)?.name || selectedLanguage.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <Zap size={12} />
+              <span className="font-medium">
+                {strategies?.find(s => s.id === selectedStrategy)?.name || selectedStrategy}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

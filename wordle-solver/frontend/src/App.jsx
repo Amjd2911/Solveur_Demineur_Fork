@@ -224,7 +224,7 @@ function App() {
               </div>
             </div>
             <a
-              href="https://github.com/yourusername/wordle-solver"
+              href="https://github.com/ivanoffffff/2025-MSMIN5IN52-Search-Symbolic-Min1"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
