@@ -104,17 +104,6 @@ const GameControls = ({
               </>
             )}
           </button>
-
-          {isPlaying && (
-            <button
-              onClick={onGetSuggestion}
-              disabled={disabled}
-              className="btn-secondary w-full flex items-center justify-center gap-2"
-            >
-              <Zap size={18} />
-              Obtenir une Suggestion
-            </button>
-          )}
         </div>
 
         {/* Configuration actuelle */}

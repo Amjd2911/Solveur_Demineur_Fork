@@ -29,6 +29,7 @@ from wordle_solver.strategies import (
     MinimaxStrategy,
     SimpleStrategy
 )
+from gemini_service import get_gemini_service
 
 app = FastAPI(
     title="Wordle Solver API",
@@ -107,6 +108,19 @@ class SuggestionResponse(BaseModel):
     explanation: str
 
 
+class WordDefinitionRequest(BaseModel):
+    word: str
+    language: str = "fr"
+
+
+class WordDefinitionResponse(BaseModel):
+    word: str
+    language: str
+    definition: Optional[str]
+    success: bool
+    error: Optional[str] = None
+
+
 @app.get("/")
 async def root():
     """Point d'entrée de l'API."""
@@ -129,8 +143,8 @@ async def get_languages():
     """Retourne les langues disponibles."""
     return {
         "languages": [
-            {"code": "en", "name": "English", "word_count": 500},
-            {"code": "fr", "name": "Français", "word_count": 2000}
+            {"code": "en", "name": "English", "word_count": 15921},
+            {"code": "fr", "name": "Français", "word_count": 6760}
         ]
     }
 
@@ -366,6 +380,60 @@ async def get_stats():
         "loaded_dictionaries": list(_solvers.keys()),
         "available_strategies": list(_strategies.keys())
     }
+
+
+@app.post("/api/word/definition")
+async def get_word_definition(request: WordDefinitionRequest):
+    """
+    Obtient la définition d'un mot via l'API Gemini.
+    
+    Args:
+        request: Contient le mot et la langue
+    
+    Returns:
+        La définition du mot ou une erreur
+    """
+    gemini_service = get_gemini_service()
+    
+    if gemini_service is None:
+        return WordDefinitionResponse(
+            word=request.word,
+            language=request.language,
+            definition=None,
+            success=False,
+            error="Service Gemini non configuré. Veuillez ajouter GEMINI_API_KEY dans votre fichier .env"
+        )
+    
+    try:
+        definition = gemini_service.get_word_definition(
+            word=request.word,
+            language=request.language
+        )
+        
+        if definition:
+            return WordDefinitionResponse(
+                word=request.word,
+                language=request.language,
+                definition=definition,
+                success=True
+            )
+        else:
+            return WordDefinitionResponse(
+                word=request.word,
+                language=request.language,
+                definition=None,
+                success=False,
+                error="Impossible d'obtenir la définition"
+            )
+    
+    except Exception as e:
+        return WordDefinitionResponse(
+            word=request.word,
+            language=request.language,
+            definition=None,
+            success=False,
+            error=f"Erreur: {str(e)}"
+        )
 
 
 if __name__ == "__main__":

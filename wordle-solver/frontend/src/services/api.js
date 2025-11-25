@@ -67,6 +67,15 @@ export const wordleApi = {
     const response = await api.get('/stats');
     return response.data;
   },
+
+  // Obtenir la définition d'un mot via Gemini
+  getWordDefinition: async (word, language = 'fr') => {
+    const response = await api.post('/word/definition', {
+      word,
+      language,
+    });
+    return response.data;
+  },
 };
 
 export default wordleApi;

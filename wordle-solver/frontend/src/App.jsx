@@ -5,6 +5,7 @@ import Keyboard from './components/Keyboard';
 import SuggestionsPanel from './components/SuggestionsPanel';
 import GameControls from './components/GameControls';
 import GameStats from './components/GameStats';
+import WordDefinition from './components/WordDefinition';
 import wordleApi from './services/api';
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
   // Configuration
   const [languages, setLanguages] = useState([]);
   const [strategies, setStrategies] = useState([]);
+  const [currentLanguage, setCurrentLanguage] = useState('en');
 
   // État pour les erreurs de connexion
   const [backendError, setBackendError] = useState(false);
@@ -88,6 +90,7 @@ function App() {
       setIsPlaying(true);
       setIsOver(false);
       setIsWon(false);
+      setCurrentLanguage(language);
       setSuggestions({
         suggestedWord: null,
         possibleWords: [],
@@ -298,6 +301,7 @@ function App() {
               isWon={isWon}
               isOver={isOver}
             />
+            
           </div>
 
           {/* Colonne centrale : Jeu */}
@@ -352,7 +356,7 @@ function App() {
           </div>
 
           {/* Colonne droite : Suggestions */}
-          <div>
+          <div className="space-y-6">
             <SuggestionsPanel
               suggestedWord={suggestions.suggestedWord}
               possibleWords={suggestions.possibleWords}
@@ -361,6 +365,8 @@ function App() {
               strategy={suggestions.strategy}
               onSelectWord={handleSelectWord}
             />
+            {/* Nouveau composant pour les définitions */}
+            <WordDefinition language={currentLanguage} />
           </div>
         </div>
       </main>

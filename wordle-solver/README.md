@@ -119,6 +119,35 @@ Ouvrez votre navigateur sur **http://localhost:3000** et commencez à jouer !
 - 📊 **Statistiques** - Nombre de mots possibles restants
 - 🔍 **Visualisation** - Liste des candidats possibles
 - 🌍 **Multilingue** - Support FR et EN
+- 📖 **Définitions Gemini** - Obtenez la définition de n'importe quel mot via l'IA Gemini (optionnel)
+
+---
+
+## 🤖 Fonctionnalité Bonus : Définitions IA avec Gemini
+
+L'application inclut une intégration avec l'API **Google Gemini** pour obtenir des définitions de mots en temps réel.
+
+### Configuration rapide (optionnel)
+
+1. **Obtenez une clé API gratuite** sur https://ai.google.dev/
+2. **Créez un fichier `.env`** dans le dossier `wordle-solver/` :
+   ```bash
+   GEMINI_API_KEY=votre_clé_api_ici
+   ```
+3. **Installez la dépendance** :
+   ```bash
+   pip install google-genai
+   ```
+4. **Relancez le backend** - Le panneau "Définition de Mot" apparaîtra automatiquement !
+
+> **Note** : Cette fonctionnalité est complètement optionnelle. L'application fonctionne normalement sans.
+
+### Test rapide
+
+```bash
+# Tester l'intégration
+python test_gemini_integration.py
+```
 
 ---
 
