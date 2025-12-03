@@ -78,9 +78,8 @@ export class DebateViewComponent implements OnInit, OnDestroy, AfterViewChecked 
     }
 
     this.apiService.postMessage(this.debateId, this.newMessageContent, this.username)
-      .subscribe(message => {
-        // Add the message optimistically to the UI
-        this.messages.push(message);
+      .subscribe(() => {
+        // Do NOT add the message here. The WebSocket will deliver it.
         this.newMessageContent = '';
       });
   }
