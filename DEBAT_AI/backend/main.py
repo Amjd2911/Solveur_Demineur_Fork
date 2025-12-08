@@ -3,14 +3,20 @@ import asyncpg
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from flask import json
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
+
+# --- IMPORT DE TON MODULE IA ---
+from ai_model import analyze_argument, solve_debate
 
 # Load environment variables
 load_dotenv()
 
 # --- Database Setup ---
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@db/debatai")
+if not DATABASE_URL:
+    print(" WARNING: DATABASE_URL n'est pas définie dans le .env")
 pool = None
 
 async def get_pool():
@@ -34,6 +40,15 @@ class Message(BaseModel):
     user_id: int
     debate_id: int
     username: str # Joined from users table
+    created_at: Any = None # Pour gérer le timestamp
+
+    # Nouveaux champs IA (Optionnels pour éviter les bugs si null)
+    arg_type: Optional[str] = "claim"
+    relation_type: Optional[str] = "none"
+    target_id: Optional[int] = None
+    
+    # Champ spécial pour envoyer les gagnants au Frontend
+    current_winners: Optional[List[str]] = []
 
 class MessageIn(BaseModel):
     content: str
@@ -57,7 +72,7 @@ class ConnectionManager:
     async def broadcast(self, message: dict, debate_id: int):
         if debate_id in self.active_connections:
             for connection in self.active_connections[debate_id]:
-                await connection.send_json(message)
+                await connection.send_text(json.dumps(message, default=str))
 
 manager = ConnectionManager()
 
@@ -97,7 +112,8 @@ async def get_messages(debate_id: int):
     async with db_pool.acquire() as connection:
         rows = await connection.fetch(
             """
-            SELECT m.id, m.content, m.user_id, m.debate_id, u.username
+            SELECT m.id, m.content, m.user_id, m.debate_id, m.created_at, 
+                   m.arg_type, m.relation_type, m.target_id, u.username
             FROM messages m
             JOIN users u ON m.user_id = u.id
             WHERE m.debate_id = $1
@@ -105,56 +121,89 @@ async def get_messages(debate_id: int):
             """,
             debate_id
         )
-        return [Message(**row) for row in rows]
+        
+        return [Message(**dict(row)) for row in rows]
 
 @app.post("/api/debates/{debate_id}/messages", response_model=Message)
 async def create_message(debate_id: int, message_in: MessageIn):
     db_pool = await get_pool()
+     # 1. Récupérer le contexte pour l'IA (les 10 derniers messages)
+    async with db_pool.acquire() as connection:
+        history_rows = await connection.fetch("""
+            SELECT id, content, arg_type FROM messages 
+            WHERE debate_id = $1 ORDER BY created_at DESC LIMIT 10
+        """, debate_id)
+        # On formate pour que GPT comprenne
+        history_context = [{"id": str(r['id']), "content": r['content'], "type": r['arg_type']} for r in history_rows]
+
+    # 2. Appel à ton module IA (Argument Mining)
+    print(f" Analyse IA du message : {message_in.content}")
+    try:
+        ai_analysis = analyze_argument(message_in.content, history_context)
+        # ai_analysis = {'type': 'premise', 'relation': 'attack', 'target_id': 12, ...}
+    except Exception as e:
+        print(f" Erreur IA: {e}")
+        ai_analysis = {} # Valeurs par défaut
+
+    # Extraction sécurisée des valeurs
+    arg_type = ai_analysis.get('type', 'claim')
+    relation = ai_analysis.get('relation', 'none')
+    target_id = ai_analysis.get('target_id')
+
+    # Si target_id est vide ou invalide (ex: pas un nombre), on le met à None
+    if not isinstance(target_id, int):
+        target_id = None
+
     async with db_pool.acquire() as connection:
         async with connection.transaction():
-            # Find or create user
+            # Gestion User
             user = await connection.fetchrow("SELECT id FROM users WHERE username = $1", message_in.username)
             if user:
                 user_id = user['id']
             else:
                 user_id = await connection.fetchval("INSERT INTO users (username) VALUES ($1) RETURNING id", message_in.username)
 
-            # Insert message
-            inserted_message = await connection.fetchrow(
+            # 3. Insertion en Base de Données (Avec les nouvelles colonnes)
+            row = await connection.fetchrow(
                 """
-                INSERT INTO messages (content, user_id, debate_id)
-                VALUES ($1, $2, $3)
-                RETURNING id, content, user_id, debate_id
+                INSERT INTO messages (content, user_id, debate_id, arg_type, relation_type, target_id)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id, content, user_id, debate_id, created_at, arg_type, relation_type, target_id
                 """,
-                message_in.content, user_id, debate_id
-            )
-            
-            # Construct the full message object to broadcast
-            full_message = Message(
-                id=inserted_message['id'],
-                content=inserted_message['content'],
-                user_id=inserted_message['user_id'],
-                debate_id=inserted_message['debate_id'],
-                username=message_in.username
+                message_in.content, user_id, debate_id, arg_type, relation, target_id
             )
 
-            # Broadcast the new message to all connected clients in the debate
-            await manager.broadcast(full_message.model_dump(), debate_id)
+            # 4. Calcul Logique (Tweety) - On relit TOUT le débat pour mettre à jour le graphe
+            all_messages = await connection.fetch("""
+                SELECT id, arg_type, relation_type as relation, target_id 
+                FROM messages WHERE debate_id = $1
+            """, debate_id)
             
-            return full_message
+            # Conversion pour ton module Python/Java
+            debate_data = [dict(m) for m in all_messages]
+            
+            print(" Calcul des gagnants avec Java...")
+            winning_ids = solve_debate(debate_data)
+            print(f" Gagnants actuels : {winning_ids}")
 
-# --- WebSocket Endpoint ---
+            # 5. Préparation de la réponse
+            response_dict = dict(row)
+            response_dict['username'] = message_in.username
+            response_dict['current_winners'] = winning_ids # On ajoute les gagnants !
+
+            # 6. Diffusion WebSocket (Tout le monde reçoit la mise à jour)
+            await manager.broadcast(response_dict, debate_id)
+            
+            return Message(**response_dict)
+
 @app.websocket("/ws/debates/{debate_id}")
 async def websocket_endpoint(websocket: WebSocket, debate_id: int):
     await manager.connect(websocket, debate_id)
     try:
         while True:
-            # Keep the connection alive by waiting for messages.
-            # We don't do anything with the received data in this simple case.
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket, debate_id)
-        print(f"Client disconnected from debate {debate_id}")
 
 @app.get("/")
 def read_root():
