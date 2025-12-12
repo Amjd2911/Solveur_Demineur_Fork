@@ -113,7 +113,23 @@ def _resoudre_vrp_thread(
         
         if type_vrp == 'vert':
             # paramètres pour VRP vert
-            autonomie_max = 100.0
+            # calculer une autonomie réaliste basée sur les distances
+            # estimer la distance moyenne entre points
+            import numpy as np
+            all_points = [depot] + clients + stations
+            distances_estimees = []
+            for i, p1 in enumerate(all_points):
+                for j, p2 in enumerate(all_points[i+1:], i+1):
+                    dist = np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+                    distances_estimees.append(dist)
+            
+            if distances_estimees:
+                distance_moyenne = np.mean(distances_estimees)
+                # autonomie = environ 2-3 fois la distance moyenne pour forcer des recharges
+                autonomie_max = max(20.0, min(50.0, distance_moyenne * 2.5))
+            else:
+                autonomie_max = 30.0  # valeur par défaut plus réaliste
+            
             consommation = 1.0
             temps_recharge = 30
             

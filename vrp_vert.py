@@ -177,9 +177,11 @@ class VRPVert:
                         )
         
         # contraintes : batterie et autonomie
+        batterie_max = int(self.autonomie_max * 100)
+        
         for k in range(self.nombre_vehicules):
             # départ du dépôt avec batterie pleine
-            model.Add(batterie[0, k] == int(self.autonomie_max * 100))
+            model.Add(batterie[0, k] == batterie_max)
             
             for j in range(1, self.n_total):
                 for i in range(self.n_total):
@@ -187,30 +189,40 @@ class VRPVert:
                         dist = int(self.distances[i][j] * 100)
                         consommation_ij = int(dist * self.consommation)
                         
-                        # si on va de i à j
-                        # consommation de batterie
-                        model.Add(
-                            batterie[j, k] <= batterie[i, k] - consommation_ij + 
-                            int(self.autonomie_max * 100) * (1 - x[i, j, k])
-                        )
-                        model.Add(
-                            batterie[j, k] >= batterie[i, k] - consommation_ij - 
-                            int(self.autonomie_max * 100) * (1 - x[i, j, k])
-                        )
+                        # vérifier si i ou j sont des stations
+                        i_est_station = (i >= 1 + self.n_clients)
+                        j_est_station = (j >= 1 + self.n_clients)
                         
-                        # contrainte : batterie ne peut pas être négative
-                        model.Add(batterie[j, k] >= 0)
-        
-        # contraintes spéciales pour les stations : recharge complète
-        for k in range(self.nombre_vehicules):
-            for j in range(1 + self.n_clients, self.n_total):  # pour chaque station
-                # si on visite la station, batterie rechargée à plein
-                visite_station = model.NewBoolVar(f'visit_station_{j}_{k}')
-                model.Add(sum(x[i, j, k] for i in range(self.n_total) if i != j) == visite_station)
-                model.Add(batterie[j, k] >= int(self.autonomie_max * 100) - 
-                         int(self.autonomie_max * 100) * (1 - visite_station))
-                model.Add(batterie[j, k] <= int(self.autonomie_max * 100) + 
-                         int(self.autonomie_max * 100) * (1 - visite_station))
+                        if j_est_station:
+                            # si on arrive à une station, batterie = plein après recharge
+                            model.Add(
+                                batterie[j, k] >= batterie_max - 
+                                batterie_max * (1 - x[i, j, k])
+                            )
+                            model.Add(batterie[j, k] <= batterie_max)
+                        elif i_est_station:
+                            # si on quitte une station, batterie de départ = plein
+                            model.Add(
+                                batterie[j, k] <= batterie_max - consommation_ij + 
+                                batterie_max * (1 - x[i, j, k])
+                            )
+                            model.Add(
+                                batterie[j, k] >= batterie_max - consommation_ij - 
+                                batterie_max * (1 - x[i, j, k])
+                            )
+                        else:
+                            # trajet normal entre dépôt/clients
+                            model.Add(
+                                batterie[j, k] <= batterie[i, k] - consommation_ij + 
+                                batterie_max * (1 - x[i, j, k])
+                            )
+                            model.Add(
+                                batterie[j, k] >= batterie[i, k] - consommation_ij - 
+                                batterie_max * (1 - x[i, j, k])
+                            )
+                
+                # contrainte : batterie ne peut pas être négative
+                model.Add(batterie[j, k] >= 0)
         
         # contraintes : fenêtres temporelles
         for k in range(self.nombre_vehicules):
