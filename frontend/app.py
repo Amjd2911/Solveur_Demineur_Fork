@@ -9,8 +9,8 @@ import json
 import time
 import threading
 from typing import List, Tuple, Dict, Optional, Callable
-from vrp_classique import VRPClassique
-from vrp_vert import VRPVert
+from backend.vrp_classique import VRPClassique
+from backend.vrp_vert import VRPVert
 
 app = Flask(__name__)
 CORS(app)
