@@ -225,10 +225,17 @@ class VRPVert:
                     if i != j:
                         dist = int(self.distances[i][j])
                         temps_trajet = dist
-                        temps_serv = self.temps_service[j-1] if j <= self.n_clients else 0
                         
-                        # si c'est une station, ajouter temps de recharge
-                        if i >= 1 + self.n_clients:
+                        # temps de service au nœud de départ i
+                        if i == 0:
+                            temps_serv = 0  # dépôt
+                        elif i <= self.n_clients:
+                            temps_serv = self.temps_service[i-1]  # client
+                        else:
+                            temps_serv = 0  # station (pas de service, juste recharge)
+                        
+                        # si on arrive à une station, ajouter temps de recharge
+                        if j >= 1 + self.n_clients:
                             temps_serv = self.temps_recharge
                         
                         model.Add(

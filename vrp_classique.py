@@ -158,9 +158,11 @@ class VRPClassique:
                 for i in range(self.n):
                     if i != j:
                         dist = int(self.distances[i][j])
+                        # temps de service : 0 pour le dépôt, sinon temps_service[i-1]
+                        temps_serv = self.temps_service[i-1] if i > 0 else 0
                         model.Add(
                             temps_arrivee[j, k] >= temps_arrivee[i, k] + 
-                            self.temps_service[i] + dist - 
+                            temps_serv + dist - 
                             10000 * (1 - x[i, j, k])
                         )
         
