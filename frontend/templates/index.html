@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimisation VRP - Interface Web</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #main-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 350px;
+            height: 100vh;
+            background: #f5f5f5;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 2px solid #ddd;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+        }
+        
+        #sidebar.collapsed {
+            transform: translateX(100%);
+        }
+        
+        #sidebar-toggle {
+            position: fixed;
+            right: 350px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px 0 0 8px;
+            cursor: pointer;
+            z-index: 1003;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: -2px 2px 8px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+        }
+        
+        #sidebar-toggle:hover {
+            background: #45a049;
+        }
+        
+        #sidebar.collapsed + #sidebar-toggle {
+            right: 0;
+        }
+        
+        #bottom-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 350px;
+            background: white;
+            padding: 15px 20px;
+            border-top: 2px solid #ddd;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            z-index: 1002;
+            transition: right 0.3s ease;
+        }
+        
+        body.sidebar-collapsed #bottom-buttons {
+            right: 0;
+        }
+        
+        #bottom-buttons button {
+            width: auto;
+            min-width: 150px;
+            margin: 0;
+        }
+        
+        #solve-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #solve-btn.progress-mode {
+            min-width: 200px;
+            padding: 0;
+            height: 50px;
+            background: #e0e0e0;
+            border: 2px solid #4CAF50;
+        }
+        
+        #solve-btn .progress-fill-btn {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.3s;
+            z-index: 1;
+        }
+        
+        #solve-btn .progress-text-btn {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 12px;
+            padding: 0 10px;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        #solve-btn.progress-mode .progress-text-btn {
+            color: #666;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        h2 {
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #666;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #2196F3;
+        }
+        
+        .btn-secondary:hover {
+            background: #0b7dda;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+        }
+        
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            background: #e0e0e0;
+            border: 2px solid transparent;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 4px;
+        }
+        
+        .mode-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        
+        .info-box {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+        }
+        
+        .results h3 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .results p {
+            margin: 5px 0;
+            color: #856404;
+        }
+        
+        .point-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .point-item {
+            padding: 5px;
+            margin: 5px 0;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+            <h1>🚚 Optimisation VRP</h1>
+            
+            <div class="section">
+                <h2>Mode de placement</h2>
+                <div class="mode-selector">
+                    <div class="mode-btn active" id="mode-depot" onclick="setMode('depot')">Dépôt</div>
+                    <div class="mode-btn" id="mode-client" onclick="setMode('client')">Client</div>
+                    <div class="mode-btn" id="mode-station" onclick="setMode('station')">Station</div>
+                </div>
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                    Cliquez sur la carte pour placer les points
+                </p>
+            </div>
+            
+            <div class="section">
+                <h2>Configuration</h2>
+                <label>Nombre de véhicules:</label>
+                <input type="number" id="nb-vehicules" value="2" min="1" max="10">
+                
+                <label>Capacité par véhicule:</label>
+                <input type="number" id="capacite" value="50" min="1">
+                
+                <label>Type de VRP:</label>
+                <select id="type-vrp">
+                    <option value="classique">Classique</option>
+                    <option value="vert">Vert (Électrique)</option>
+                </select>
+                
+                <label>Temps limite (secondes):</label>
+                <input type="number" id="limite-temps" value="30" min="5" max="300">
+            </div>
+            
+            <div class="section">
+                <h2>Points placés</h2>
+                <div id="points-list">
+                    <p style="color: #999; font-size: 12px;">Aucun point placé</p>
+                </div>
+            </div>
+            
+            <div id="results-section" style="display: none;">
+                <div class="results">
+                    <h3>Résultats</h3>
+                    <p id="result-statut"></p>
+                    <p id="result-distance"></p>
+                    <p id="result-vehicules"></p>
+                </div>
+            </div>
+    </div>
+    
+    <button id="sidebar-toggle" onclick="toggleSidebar()">✕</button>
+    
+    <div id="main-container">
+        <div id="map"></div>
+    </div>
+    
+    <div id="bottom-buttons">
+        <button onclick="clearAll()" class="btn-danger">Effacer tout</button>
+        <button onclick="solveVRP()" id="solve-btn">Résoudre</button>
+    </div>
+    
+    <script>
+        // fonction pour plier/déplier la sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebar-toggle');
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            
+            sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed', !isCollapsed);
+            toggle.textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
+            
+            // redimensionner la carte après l'animation
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+        
+        // initialisation de la carte
+        const map = L.map('map').setView([48.8566, 2.3522], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // état de l'application
+        let currentMode = 'depot';
+        let depot = null;
+        let clients = [];
+        let stations = [];
+        let markers = {
+            depot: null,
+            clients: [],
+            stations: []
+        };
+        let currentSolutionId = null;
+        let eventSource = null;
+        
+        // gestion du mode de placement
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+        }
+        
+        // gestion des clics sur la carte
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+            
+            if (currentMode === 'depot') {
+                if (markers.depot) {
+                    map.removeLayer(markers.depot);
+                }
+                depot = [lat, lon];
+                markers.depot = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41]
+                    })
+                }).addTo(map).bindPopup('Dépôt');
+                updatePointsList();
+            } else if (currentMode === 'client') {
+                const marker = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41]
+                    })
+                }).addTo(map).bindPopup(`Client ${clients.length + 1}`);
+                clients.push([lat, lon]);
+                markers.clients.push(marker);
+                updatePointsList();
+            } else if (currentMode === 'station') {
+                const marker = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41]
+                    })
+                }).addTo(map).bindPopup(`Station ${stations.length + 1}`);
+                stations.push([lat, lon]);
+                markers.stations.push(marker);
+                updatePointsList();
+            }
+        });
+        
+        // mise à jour de la liste des points
+        function updatePointsList() {
+            const list = document.getElementById('points-list');
+            let html = '';
+            
+            if (depot) {
+                html += `<div class="point-item">📍 Dépôt: ${depot[0].toFixed(4)}, ${depot[1].toFixed(4)}</div>`;
+            }
+            
+            clients.forEach((c, i) => {
+                html += `<div class="point-item">🔵 Client ${i+1}: ${c[0].toFixed(4)}, ${c[1].toFixed(4)}</div>`;
+            });
+            
+            stations.forEach((s, i) => {
+                html += `<div class="point-item">🟢 Station ${i+1}: ${s[0].toFixed(4)}, ${s[1].toFixed(4)}</div>`;
+            });
+            
+            if (html === '') {
+                html = '<p style="color: #999; font-size: 12px;">Aucun point placé</p>';
+            }
+            
+            list.innerHTML = html;
+        }
+        
+        // effacer tout
+        function clearAll() {
+            depot = null;
+            clients = [];
+            stations = [];
+            
+            if (markers.depot) {
+                map.removeLayer(markers.depot);
+                markers.depot = null;
+            }
+            
+            markers.clients.forEach(m => map.removeLayer(m));
+            markers.clients = [];
+            
+            markers.stations.forEach(m => map.removeLayer(m));
+            markers.stations = [];
+            
+            // effacer les tournées
+            if (window.tourneeLayers) {
+                window.tourneeLayers.forEach(layer => map.removeLayer(layer));
+                window.tourneeLayers = [];
+            }
+            
+            updatePointsList();
+            document.getElementById('results-section').style.display = 'none';
+            
+            // restaurer le bouton si en mode progression
+            const solveBtn = document.getElementById('solve-btn');
+            if (solveBtn.classList.contains('progress-mode')) {
+                solveBtn.classList.remove('progress-mode');
+                solveBtn.disabled = false;
+                solveBtn.innerHTML = 'Résoudre';
+            }
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+        
+        // résoudre le VRP
+        async function solveVRP() {
+            if (!depot || clients.length === 0) {
+                alert('Veuillez placer au moins un dépôt et un client');
+                return;
+            }
+            
+            const typeVRP = document.getElementById('type-vrp').value;
+            if (typeVRP === 'vert' && stations.length === 0) {
+                alert('Pour le VRP vert, veuillez placer au moins une station de recharge');
+                return;
+            }
+            
+            // transformer le bouton en mode progression
+            const solveBtn = document.getElementById('solve-btn');
+            solveBtn.disabled = true;
+            solveBtn.classList.add('progress-mode');
+            solveBtn.innerHTML = '<div class="progress-fill-btn" id="progress-fill-btn"></div><div class="progress-text-btn" id="progress-text-btn">Résolution en cours...</div>';
+            
+            // effacer les anciennes tournées
+            if (window.tourneeLayers) {
+                window.tourneeLayers.forEach(layer => map.removeLayer(layer));
+            }
+            window.tourneeLayers = [];
+            
+            // masquer les résultats
+            document.getElementById('results-section').style.display = 'none';
+            
+            const data = {
+                depot: depot,
+                clients: clients,
+                stations: stations,
+                nombre_vehicules: parseInt(document.getElementById('nb-vehicules').value),
+                capacite: parseInt(document.getElementById('capacite').value),
+                limite_temps: parseInt(document.getElementById('limite-temps').value),
+                type: typeVRP
+            };
+            
+            try {
+                const response = await fetch('/api/solve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                currentSolutionId = result.solution_id;
+                
+                // démarrer le stream de mises à jour
+                startSolutionStream(currentSolutionId);
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Erreur lors de la résolution: ' + error.message);
+                const solveBtn = document.getElementById('solve-btn');
+                solveBtn.classList.remove('progress-mode');
+                solveBtn.disabled = false;
+                solveBtn.innerHTML = 'Résoudre';
+            }
+        }
+        
+        // démarrer le stream de solutions
+        function startSolutionStream(solutionId) {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource(`/api/solution/${solutionId}/stream`);
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateProgress(data);
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('Erreur SSE:', error);
+                eventSource.close();
+            };
+        }
+        
+        // mettre à jour la progression
+        function updateProgress(data) {
+            const progressFill = document.getElementById('progress-fill-btn');
+            const progressText = document.getElementById('progress-text-btn');
+            const solveBtn = document.getElementById('solve-btn');
+            
+            if (data.statut === 'en_cours') {
+                const progression = data.progression || 0;
+                progressFill.style.width = progression + '%';
+                
+                if (data.distance) {
+                    progressText.textContent = `Distance: ${data.distance.toFixed(2)}`;
+                } else {
+                    progressText.textContent = 'Résolution en cours...';
+                }
+                
+                // afficher les tournées partielles
+                if (data.tournees && data.tournees.length > 0) {
+                    displayTournees(data.tournees, data.statut === 'en_cours');
+                }
+            } else if (data.statut === 'optimal' || data.statut === 'feasible') {
+                progressFill.style.width = '100%';
+                progressText.textContent = `Terminé - ${data.statut}`;
+                
+                // afficher les résultats finaux
+                displayResults(data);
+                displayTournees(data.tournees, false);
+                
+                // restaurer le bouton normal
+                setTimeout(() => {
+                    solveBtn.classList.remove('progress-mode');
+                    solveBtn.disabled = false;
+                    solveBtn.innerHTML = 'Résoudre';
+                }, 2000);
+                
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            } else if (data.statut === 'infeasible' || data.statut === 'erreur') {
+                progressText.textContent = `Erreur: ${data.statut}`;
+                
+                // restaurer le bouton normal
+                setTimeout(() => {
+                    solveBtn.classList.remove('progress-mode');
+                    solveBtn.disabled = false;
+                    solveBtn.innerHTML = 'Résoudre';
+                }, 2000);
+                
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        // afficher les tournées sur la carte
+        function displayTournees(tournees, isPartial) {
+            // effacer les anciennes tournées
+            if (window.tourneeLayers) {
+                window.tourneeLayers.forEach(layer => map.removeLayer(layer));
+            }
+            window.tourneeLayers = [];
+            
+            const colors = ['#FF0000', '#0000FF', '#00FF00', '#FF00FF', '#FFFF00', '#00FFFF', '#FFA500', '#800080'];
+            
+            tournees.forEach((tournee, idx) => {
+                if (tournee.length < 2) return;
+                
+                const points = [];
+                tournee.forEach(nodeIdx => {
+                    if (nodeIdx === 0 && depot) {
+                        points.push([depot[0], depot[1]]);
+                    } else if (nodeIdx > 0 && nodeIdx <= clients.length) {
+                        points.push([clients[nodeIdx - 1][0], clients[nodeIdx - 1][1]]);
+                    } else if (nodeIdx > clients.length && stations.length > 0) {
+                        const stationIdx = nodeIdx - 1 - clients.length;
+                        if (stationIdx < stations.length) {
+                            points.push([stations[stationIdx][0], stations[stationIdx][1]]);
+                        }
+                    }
+                });
+                
+                if (points.length >= 2) {
+                    const color = colors[idx % colors.length];
+                    const polyline = L.polyline(points, {
+                        color: color,
+                        weight: 4,
+                        opacity: isPartial ? 0.5 : 0.8
+                    }).addTo(map);
+                    
+                    polyline.bindPopup(`Véhicule ${idx + 1}`);
+                    window.tourneeLayers.push(polyline);
+                }
+            });
+        }
+        
+        // afficher les résultats
+        function displayResults(data) {
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('result-statut').textContent = `Statut: ${data.statut}`;
+            document.getElementById('result-distance').textContent = `Distance totale: ${data.distance ? data.distance.toFixed(2) : 'N/A'}`;
+            document.getElementById('result-vehicules').textContent = `Véhicules utilisés: ${data.nombre_vehicules || data.tournees ? data.tournees.length : 0}`;
+        }
+        
+        // initialisation
+        window.tourneeLayers = [];
+    </script>
+</body>
+</html>
+
