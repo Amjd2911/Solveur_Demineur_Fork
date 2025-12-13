@@ -7,6 +7,7 @@ Utilise OR-Tools CP-SAT pour la résolution.
 from ortools.sat.python import cp_model
 import numpy as np
 from typing import List, Tuple, Dict, Optional
+import math
 
 
 class VRPVert:
@@ -69,8 +70,31 @@ class VRPVert:
         self.n_stations = len(stations_recharge)
         self.n_total = 1 + self.n_clients + self.n_stations
         
+    def _haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """calcule la distance en kilomètres entre deux points GPS (formule de Haversine)"""
+        # rayon de la terre en kilomètres
+        R = 6371.0
+        
+        # conversion en radians
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+        
+        # différences
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
+        
+        # formule de Haversine
+        a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        # distance en kilomètres
+        distance = R * c
+        return distance
+    
     def _calculer_distances(self) -> np.ndarray:
-        """calcule la matrice des distances entre tous les points"""
+        """calcule la matrice des distances en kilomètres entre tous les points"""
         points = [self.depot] + self.clients + self.stations_recharge
         n = len(points)
         distances = np.zeros((n, n))
@@ -78,9 +102,10 @@ class VRPVert:
         for i in range(n):
             for j in range(n):
                 if i != j:
-                    dx = points[i][0] - points[j][0]
-                    dy = points[i][1] - points[j][1]
-                    distances[i][j] = np.sqrt(dx**2 + dy**2)
+                    # points[i] = (latitude, longitude)
+                    lat1, lon1 = points[i]
+                    lat2, lon2 = points[j]
+                    distances[i][j] = self._haversine_distance(lat1, lon1, lat2, lon2)
         
         return distances
     
