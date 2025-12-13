@@ -2,14 +2,14 @@
 
 import os
 
-def load_en_words(file_path: str = None) -> list[str]:
+def load_en_words(file_path: str | None = None) -> list[str]:
     """
     Charge tous les mots anglais depuis un fichier txt.
     Chaque mot doit être sur une ligne séparée dans le fichier.
     
     Args:
-        file_path (str, optional): Chemin vers le fichier txt contenant les mots.
-                                   Par défaut, cherche 'en_words.txt' dans le même dossier.
+        file_path (str | None, optional): Chemin vers le fichier txt contenant les mots.
+                                          Par défaut, cherche 'en_words.txt' dans le même dossier.
 
     Returns:
         list[str]: Liste de mots anglais en majuscules.
