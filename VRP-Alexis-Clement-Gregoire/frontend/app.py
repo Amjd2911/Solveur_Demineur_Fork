@@ -81,7 +81,15 @@ def solve_vrp():
     demandes = demandes[:len(clients)]  # limiter au nombre de clients
     
     fenetres_temps = data.get('fenetres_temps', [(0, 10000)] * len(clients))
-    temps_service = data.get('temps_service', [0] * len(clients))
+    # convertir les listes en tuples pour fenetres_temps
+    if fenetres_temps:
+        fenetres_temps = [tuple(ft) if isinstance(ft, list) else ft for ft in fenetres_temps]
+    # temps de service constant de 10 unités (10 minutes) par client
+    temps_service = data.get('temps_service', [10] * len(clients))
+    # s'assurer que tous les clients ont un temps de service (compléter si nécessaire)
+    if len(temps_service) < len(clients):
+        temps_service.extend([10] * (len(clients) - len(temps_service)))
+    temps_service = temps_service[:len(clients)]  # limiter au nombre de clients
     
     solution_id = f"solution_{int(time.time() * 1000)}"
     
@@ -186,9 +194,12 @@ def _resoudre_vrp_thread(
         solutions_en_cours[solution_id] = {
             'statut': resultat['statut'],
             'distance': resultat['distance_totale'],
+            'distances_vehicules': resultat.get('distances_vehicules', []),
             'tournees': resultat['tournees'],
             'temps': limite_temps,
-            'nombre_vehicules': resultat.get('nombre_vehicules_utilises', 0)
+            'nombre_vehicules': resultat.get('nombre_vehicules_utilises', 0),
+            'temps_arrivees': resultat.get('temps_arrivees', {}),
+            'temps_retour_depot': resultat.get('temps_retour_depot', {})
         }
         
     except Exception as e:
@@ -199,8 +210,9 @@ def _resoudre_vrp_thread(
 
 
 def _resoudre_avec_progression(vrp, limite_temps: int, solution_id: str):
-    """résout le VRP avec simulation de progression"""
+    """résout le VRP avec progression basée sur le temps réel"""
     import queue
+    import time as time_module
     resultat_queue = queue.Queue()
     
     # démarrer la résolution dans un thread séparé
@@ -212,17 +224,21 @@ def _resoudre_avec_progression(vrp, limite_temps: int, solution_id: str):
     solve_thread.daemon = True
     solve_thread.start()
     
-    # simuler des mises à jour progressives pour le temps réel
-    n_updates = min(20, max(5, limite_temps // 2))  # entre 5 et 20 mises à jour
-    intervalle = limite_temps / n_updates
+    # temps de début pour calculer la progression réelle
+    temps_debut = time_module.time()
+    
+    # fréquence de mise à jour (toutes les 0.5 secondes)
+    intervalle_update = 0.5
+    n_updates_max = int(limite_temps / intervalle_update) + 1
     
     # obtenir les informations du problème
     n_clients = len(vrp.clients) if hasattr(vrp, 'clients') else 0
     n_vehicules = vrp.nombre_vehicules
     
     # envoyer des mises à jour progressives
-    for i in range(n_updates):
-        time.sleep(intervalle)
+    i = 0
+    while True:
+        time.sleep(intervalle_update)
         
         # vérifier si la résolution est terminée
         try:
@@ -231,19 +247,24 @@ def _resoudre_avec_progression(vrp, limite_temps: int, solution_id: str):
             solutions_en_cours[solution_id] = {
                 'statut': resultat_final['statut'],
                 'distance': resultat_final.get('distance_totale', 0),
+                'distances_vehicules': resultat_final.get('distances_vehicules', []),
                 'tournees': resultat_final.get('tournees', []),
                 'temps': limite_temps,
                 'progression': 100,
-                'nombre_vehicules': resultat_final.get('nombre_vehicules_utilises', 0)
+                'nombre_vehicules': resultat_final.get('nombre_vehicules_utilises', 0),
+                'temps_arrivees': resultat_final.get('temps_arrivees', {}),
+                'temps_retour_depot': resultat_final.get('temps_retour_depot', {})
             }
             return resultat_final
         except queue.Empty:
             pass
         
-        # simuler une amélioration progressive
-        progression = (i + 1) / n_updates
+        # calculer la progression basée sur le temps réel écoulé
+        temps_ecoule = time_module.time() - temps_debut
+        progression_pct = min(99, (temps_ecoule / limite_temps) * 100)  # max 99% jusqu'à la fin
         
-        # estimer une distance qui s'améliore progressivement
+        # estimer une distance qui s'améliore progressivement (pour l'affichage)
+        progression = progression_pct / 100
         distance_estimee = n_clients * 10 * (2 - progression) if n_clients > 0 else 0
         
         # créer des tournées partielles simulées (construction progressive)
@@ -271,9 +292,14 @@ def _resoudre_avec_progression(vrp, limite_temps: int, solution_id: str):
             'statut': 'en_cours',
             'distance': distance_estimee,
             'tournees': tournees_simulees,
-            'temps': (i + 1) * intervalle,
-            'progression': progression * 100
+            'temps': temps_ecoule,
+            'progression': progression_pct
         }
+        
+        i += 1
+        # arrêter si on dépasse le temps limite
+        if temps_ecoule >= limite_temps:
+            break
     
     # attendre la fin de la résolution si nécessaire
     solve_thread.join(timeout=2)

@@ -488,6 +488,10 @@
             font-size: 12px;
         }
         
+        .vehicules-table select {
+            cursor: pointer;
+        }
+        
         .vehicules-table-container {
             max-height: 200px;
             overflow-y: auto;
@@ -610,11 +614,71 @@
         
         #results-section {
             position: fixed;
-            bottom: 120px;
+            top: 150px;
             left: 20px;
             z-index: 1001;
             max-width: 400px;
             width: 400px;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        #results-section.minimized {
+            display: none;
+        }
+        
+        #results-section .results {
+            position: relative;
+        }
+        
+        #results-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        
+        #results-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        #results-bubble {
+            position: fixed;
+            bottom: 120px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: #000;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1002;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        
+        #results-bubble:hover {
+            transform: scale(1.1);
+        }
+        
+        #results-bubble::after {
+            content: "📊";
+            font-size: 24px;
         }
         
         body.sidebar-collapsed #results-section {
@@ -805,7 +869,7 @@
                                         <input type="number" class="capacite-vehicule" value="50" min="1">
                                     </td>
                                     <td class="autonomie-col" style="display: none;">
-                                        <input type="number" class="autonomie-vehicule" value="30" min="1" step="0.1">
+                                        <input type="number" class="autonomie-vehicule" value="10" min="1" step="0.1">
                                     </td>
                                 </tr>
                                 <tr>
@@ -814,7 +878,7 @@
                                         <input type="number" class="capacite-vehicule" value="50" min="1">
                                     </td>
                                     <td class="autonomie-col" style="display: none;">
-                                        <input type="number" class="autonomie-vehicule" value="30" min="1" step="0.1">
+                                        <input type="number" class="autonomie-vehicule" value="10" min="1" step="0.1">
                                     </td>
                                 </tr>
                             </tbody>
@@ -830,7 +894,7 @@
                 </div>
                 <div class="section-content">
                     <p style="font-size: 12px; color: #666; margin-bottom: 8px;">
-                        Taille du colis (en unités) pour chaque client :
+                        Configuration pour chaque client (taille du colis et fenêtres temporelles) :
                     </p>
                     <div class="vehicules-table-container" id="demandes-clients">
                         <p style="color: #999; font-size: 11px; text-align: center; padding: 10px;">
@@ -869,12 +933,16 @@
         <div id="map"></div>
         <div id="results-section" style="display: none;">
             <div class="results">
+                <button id="results-close-btn" title="Réduire">×</button>
                 <h3>Résultats</h3>
                 <p id="result-statut"></p>
                 <p id="result-distance"></p>
                 <p id="result-vehicules"></p>
+                <div id="result-horaires" style="margin-top: 10px;"></div>
             </div>
         </div>
+        
+        <div id="results-bubble" title="Afficher les résultats"></div>
     </div>
     
     <div id="bottom-buttons">
@@ -1138,6 +1206,29 @@
             }
         }
         
+        // convertir unité de temps (0 = 8h00) vers heure (HH:MM)
+        function uniteVersHeure(unite) {
+            // 0 unité = 8h00 = 480 minutes depuis minuit
+            const totalMinutes = unite + 480;
+            const heures = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return { heures: heures, minutes: minutes };
+        }
+        
+        // convertir unité de temps en format HH:MM
+        function uniteVersHeureFormat(unite) {
+            const h = uniteVersHeure(unite);
+            return `${h.heures.toString().padStart(2, '0')}:${h.minutes.toString().padStart(2, '0')}`;
+        }
+        
+        // convertir heure (HH:MM) vers unité de temps (0 = 8h00)
+        function heureVersUnite(heures, minutes) {
+            // heure en minutes depuis minuit
+            const totalMinutes = heures * 60 + minutes;
+            // soustraire 480 (8h00) pour avoir l'unité
+            return totalMinutes - 480;
+        }
+        
         // mise à jour des demandes des clients
         function updateDemandesClients() {
             const container = document.getElementById('demandes-clients');
@@ -1147,23 +1238,62 @@
                 return;
             }
             
+            // générer les options d'heures (8h à 20h)
+            let optionsHeures = '';
+            for (let h = 8; h <= 20; h++) {
+                optionsHeures += `<option value="${h}">${h.toString().padStart(2, '0')}h</option>`;
+            }
+            
+            // générer les options de minutes (par tranche de 10)
+            let optionsMinutes = '';
+            const minutesOptions = [0, 10, 20, 30, 40, 50];
+            minutesOptions.forEach(m => {
+                optionsMinutes += `<option value="${m}">${m.toString().padStart(2, '0')}</option>`;
+            });
+            
             let html = `
                 <table class="vehicules-table">
                     <thead>
                         <tr>
-                            <th style="width: 30%;">Client</th>
-                            <th style="width: 70%;">Taille du colis (en unités)</th>
+                            <th style="width: 15%;">Client</th>
+                            <th style="width: 20%;">Taille du colis</th>
+                            <th style="width: 32.5%;">Heure début dispo</th>
+                            <th style="width: 32.5%;">Heure fin dispo</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             
             clients.forEach((c, i) => {
+                // valeurs par défaut : 8h00 (0 unité) et 20h00 (720 unités)
+                const debutDefaut = { heures: 8, minutes: 0 };
+                const finDefaut = { heures: 20, minutes: 0 };
+                
                 html += `
                     <tr>
                         <td>Client ${i+1}</td>
                         <td>
-                            <input type="number" class="demande-client" data-index="${i}" value="10" min="1">
+                            <input type="number" class="demande-client" data-index="${i}" value="10" min="1" style="width: 100%;">
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <select class="fenetre-debut-heure" data-index="${i}" style="flex: 1;">
+                                    ${optionsHeures.replace(`value="${debutDefaut.heures}"`, `value="${debutDefaut.heures}" selected`)}
+                                </select>
+                                <select class="fenetre-debut-minute" data-index="${i}" style="flex: 1;">
+                                    ${optionsMinutes.replace(`value="${debutDefaut.minutes}"`, `value="${debutDefaut.minutes}" selected`)}
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <select class="fenetre-fin-heure" data-index="${i}" style="flex: 1;">
+                                    ${optionsHeures.replace(`value="${finDefaut.heures}"`, `value="${finDefaut.heures}" selected`)}
+                                </select>
+                                <select class="fenetre-fin-minute" data-index="${i}" style="flex: 1;">
+                                    ${optionsMinutes.replace(`value="${finDefaut.minutes}"`, `value="${finDefaut.minutes}" selected`)}
+                                </select>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -1289,6 +1419,7 @@
             updatePointsList();
             updateDemandesClients();
             document.getElementById('results-section').style.display = 'none';
+            document.getElementById('results-bubble').style.display = 'none';
             
             // restaurer le bouton si en mode progression
             const solveBtn = document.getElementById('solve-btn');
@@ -1361,6 +1492,7 @@
             
             // masquer les résultats
             document.getElementById('results-section').style.display = 'none';
+            document.getElementById('results-bubble').style.display = 'none';
             
             // collecter les capacités des véhicules
             const capacitesInputs = document.querySelectorAll('.capacite-vehicule');
@@ -1370,12 +1502,30 @@
             let autonomies = null;
             if (typeVRP === 'vert') {
                 const autonomiesInputs = document.querySelectorAll('.autonomie-vehicule');
-                autonomies = Array.from(autonomiesInputs).map(input => parseFloat(input.value) || 30.0);
+                autonomies = Array.from(autonomiesInputs).map(input => parseFloat(input.value) || 10.0);
             }
             
             // collecter les demandes des clients
             const demandesInputs = document.querySelectorAll('.demande-client');
             const demandes = Array.from(demandesInputs).map(input => parseInt(input.value) || 10);
+            
+            // collecter les fenêtres temporelles des clients (convertir heures en unités)
+            const fenetresDebutHeureInputs = document.querySelectorAll('.fenetre-debut-heure');
+            const fenetresDebutMinuteInputs = document.querySelectorAll('.fenetre-debut-minute');
+            const fenetresFinHeureInputs = document.querySelectorAll('.fenetre-fin-heure');
+            const fenetresFinMinuteInputs = document.querySelectorAll('.fenetre-fin-minute');
+            const fenetres_temps = [];
+            for (let i = 0; i < clients.length; i++) {
+                const debutHeure = parseInt(fenetresDebutHeureInputs[i]?.value) || 8;
+                const debutMinute = parseInt(fenetresDebutMinuteInputs[i]?.value) || 0;
+                const finHeure = parseInt(fenetresFinHeureInputs[i]?.value) || 20;
+                const finMinute = parseInt(fenetresFinMinuteInputs[i]?.value) || 0;
+                
+                // convertir heures en unités de temps (0 = 8h00)
+                const debut = heureVersUnite(debutHeure, debutMinute);
+                const fin = heureVersUnite(finHeure, finMinute);
+                fenetres_temps.push([debut, fin]);
+            }
             
             // calculer la limite de temps selon le mode de raisonnement
             const modeRaisonnement = document.getElementById('mode-raisonnement').value;
@@ -1395,6 +1545,7 @@
                 nombre_vehicules: parseInt(document.getElementById('nb-vehicules').value),
                 capacites_vehicules: capacites,
                 demandes: demandes,
+                fenetres_temps: fenetres_temps,
                 limite_temps: limite_temps,
                 type: typeVRP
             };
@@ -1453,6 +1604,7 @@
             
             // masquer les résultats
             document.getElementById('results-section').style.display = 'none';
+            document.getElementById('results-bubble').style.display = 'none';
             
             // réinitialiser l'id de solution
             currentSolutionId = null;
@@ -1487,11 +1639,8 @@
                 const progression = data.progression || 0;
                 progressFill.style.width = progression + '%';
                 
-                if (data.distance) {
-                    progressText.textContent = `Distance: ${data.distance.toFixed(2)} km`;
-                } else {
-                    progressText.textContent = 'Résolution en cours...';
-                }
+                // afficher le pourcentage de progression
+                progressText.textContent = `${Math.round(progression)}%`;
                 
                 // afficher les tournées partielles
                 if (data.tournees && data.tournees.length > 0) {
@@ -1602,13 +1751,294 @@
             return traductions[statut] || statut;
         }
         
+        // gérer la réduction/agrandissement de la fenêtre des résultats
+        function minimizeResults() {
+            const resultsSection = document.getElementById('results-section');
+            const resultsBubble = document.getElementById('results-bubble');
+            resultsSection.classList.add('minimized');
+            resultsSection.style.display = 'none';
+            resultsBubble.style.display = 'flex';
+        }
+        
+        function maximizeResults() {
+            const resultsSection = document.getElementById('results-section');
+            const resultsBubble = document.getElementById('results-bubble');
+            resultsSection.classList.remove('minimized');
+            resultsSection.style.display = 'block';
+            resultsBubble.style.display = 'none';
+        }
+        
+        // événements pour le bouton de fermeture et la bulle
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeBtn = document.getElementById('results-close-btn');
+            const resultsBubble = document.getElementById('results-bubble');
+            
+            if (closeBtn) {
+                closeBtn.addEventListener('click', minimizeResults);
+            }
+            
+            if (resultsBubble) {
+                resultsBubble.addEventListener('click', maximizeResults);
+            }
+        });
+        
+        // calculer la distance Haversine entre deux points (lat, lon) en km
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371.0; // rayon de la terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+        
+        // calculer les horaires d'arrivée à partir de la tournée
+        function calculerHorairesArrivee(tournee, depot, clients, stations, fenetres_temps) {
+            const tempsArrivees = {};
+            let tempsActuel = 0; // départ à 0 (8h00)
+            const tempsService = 10; // 10 minutes par défaut
+            
+            for (let i = 0; i < tournee.length; i++) {
+                const nodeIdx = tournee[i];
+                
+                // si c'est le premier nœud (dépôt de départ), forcer le temps à 0
+                if (i === 0 && nodeIdx === 0) {
+                    tempsArrivees[0] = 0;
+                    continue;
+                }
+                
+                let distance = 0;
+                
+                // calculer la distance depuis le nœud précédent
+                if (i > 0) {
+                    const prevNodeIdx = tournee[i - 1];
+                    let lat1, lon1, lat2, lon2;
+                    
+                    // coordonnées du nœud précédent
+                    if (prevNodeIdx === 0) {
+                        lat1 = depot[0];
+                        lon1 = depot[1];
+                    } else if (prevNodeIdx <= clients.length) {
+                        lat1 = clients[prevNodeIdx - 1][0];
+                        lon1 = clients[prevNodeIdx - 1][1];
+                    } else if (stations && stations.length > 0) {
+                        const stationIdx = prevNodeIdx - 1 - clients.length;
+                        if (stationIdx < stations.length) {
+                            lat1 = stations[stationIdx][0];
+                            lon1 = stations[stationIdx][1];
+                        }
+                    }
+                    
+                    // coordonnées du nœud actuel
+                    if (nodeIdx === 0) {
+                        lat2 = depot[0];
+                        lon2 = depot[1];
+                    } else if (nodeIdx <= clients.length) {
+                        lat2 = clients[nodeIdx - 1][0];
+                        lon2 = clients[nodeIdx - 1][1];
+                    } else if (stations && stations.length > 0) {
+                        const stationIdx = nodeIdx - 1 - clients.length;
+                        if (stationIdx < stations.length) {
+                            lat2 = stations[stationIdx][0];
+                            lon2 = stations[stationIdx][1];
+                        }
+                    }
+                    
+                    if (lat1 !== undefined && lat2 !== undefined) {
+                        distance = haversineDistance(lat1, lon1, lat2, lon2);
+                    }
+                }
+                
+                // temps de trajet : 1 km = 5 minutes (5 unités)
+                const tempsTrajet = distance * 5;
+                
+                // temps d'arrivée = temps actuel + temps de trajet
+                tempsActuel = tempsActuel + tempsTrajet;
+                
+                // si on arrive avant le début de la fenêtre temporelle, attendre
+                if (nodeIdx > 0 && nodeIdx <= clients.length && fenetres_temps) {
+                    const fenetre = fenetres_temps[nodeIdx - 1];
+                    if (fenetre && tempsActuel < fenetre[0]) {
+                        tempsActuel = fenetre[0]; // attendre jusqu'au début de la fenêtre
+                    }
+                }
+                
+                tempsArrivees[nodeIdx] = Math.round(tempsActuel);
+                
+                // ajouter le temps de service (sauf pour le dépôt et les stations)
+                if (nodeIdx > 0 && nodeIdx <= clients.length) {
+                    tempsActuel = tempsActuel + tempsService;
+                }
+            }
+            
+            return tempsArrivees;
+        }
+        
         // afficher les résultats
         function displayResults(data) {
             document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-section').classList.remove('minimized');
+            document.getElementById('results-bubble').style.display = 'none';
             const statutFr = translateStatut(data.statut);
             document.getElementById('result-statut').textContent = `Statut : ${statutFr}`;
-            document.getElementById('result-distance').textContent = `Distance totale : ${data.distance ? data.distance.toFixed(2) + ' km' : 'N/A'}`;
+            
+            // ne plus afficher les distances par véhicule
+            document.getElementById('result-distance').textContent = '';
             document.getElementById('result-vehicules').textContent = `Véhicules utilisés : ${data.nombre_vehicules || data.tournees ? data.tournees.length : 0}`;
+            
+            // afficher les horaires détaillés
+            const horairesDiv = document.getElementById('result-horaires');
+            if (data.tournees) {
+                // récupérer les fenêtres temporelles depuis le frontend
+                const fenetresDebutHeureInputs = document.querySelectorAll('.fenetre-debut-heure');
+                const fenetresDebutMinuteInputs = document.querySelectorAll('.fenetre-debut-minute');
+                const fenetresFinHeureInputs = document.querySelectorAll('.fenetre-fin-heure');
+                const fenetresFinMinuteInputs = document.querySelectorAll('.fenetre-fin-minute');
+                const fenetres_temps = [];
+                for (let i = 0; i < clients.length; i++) {
+                    const debutHeure = parseInt(fenetresDebutHeureInputs[i]?.value) || 8;
+                    const debutMinute = parseInt(fenetresDebutMinuteInputs[i]?.value) || 0;
+                    const finHeure = parseInt(fenetresFinHeureInputs[i]?.value) || 20;
+                    const finMinute = parseInt(fenetresFinMinuteInputs[i]?.value) || 0;
+                    const debut = heureVersUnite(debutHeure, debutMinute);
+                    const fin = heureVersUnite(finHeure, finMinute);
+                    fenetres_temps.push([debut, fin]);
+                }
+                
+                let horairesHtml = '<div style="margin-top: 10px; font-size: 12px; color: #fff;">';
+                
+                // horaires par livreur (véhicule)
+                horairesHtml += '<div style="margin-bottom: 15px;"><strong style="color: #fff;">📋 Horaires des livreurs :</strong><div style="max-height: 120px; overflow-y: auto; margin-top: 5px;">';
+                
+                // utiliser les mêmes couleurs que sur la carte
+                const colors = ['#FF0000', '#0000FF', '#00FF00', '#FF00FF', '#FFFF00', '#00FFFF', '#FFA500', '#800080'];
+                
+                data.tournees.forEach((tournee, idx) => {
+                    const vehiculeNum = idx + 1;
+                    // obtenir la couleur correspondante à ce livreur
+                    const color = colors[idx % colors.length];
+                    
+                    // calculer les horaires d'arrivée manuellement
+                    const tempsArrivees = calculerHorairesArrivee(tournee, depot, clients, stations, fenetres_temps);
+                    const distanceVehicule = data.distances_vehicules && data.distances_vehicules[idx] ? data.distances_vehicules[idx].toFixed(2) : 'N/A';
+                    
+                    if (tempsArrivees && Object.keys(tempsArrivees).length > 0) {
+                        // trouver l'heure de début (premier passage au dépôt = 0 = 8h00)
+                        const heureDebut = uniteVersHeureFormat(0);
+                        
+                        // trouver l'heure de fin (dernier retour au dépôt)
+                        // calculer le temps de retour : temps arrivée dernier nœud + service + distance retour
+                        let heureFin = heureDebut;
+                        if (tournee.length > 1) {
+                            const dernierNode = tournee[tournee.length - 1];
+                            if (dernierNode === 0) {
+                                // si le dernier nœud est le dépôt, utiliser son temps d'arrivée
+                                heureFin = uniteVersHeureFormat(tempsArrivees[0] || 0);
+                            } else {
+                                // sinon, calculer : temps arrivée dernier nœud + service + distance retour
+                                const tempsDernier = tempsArrivees[dernierNode] || 0;
+                                const tempsService = 10; // 10 minutes
+                                
+                                // calculer distance retour au dépôt
+                                let lat, lon;
+                                if (dernierNode <= clients.length) {
+                                    lat = clients[dernierNode - 1][0];
+                                    lon = clients[dernierNode - 1][1];
+                                } else if (stations && stations.length > 0) {
+                                    const stationIdx = dernierNode - 1 - clients.length;
+                                    if (stationIdx < stations.length) {
+                                        lat = stations[stationIdx][0];
+                                        lon = stations[stationIdx][1];
+                                    }
+                                }
+                                
+                                if (lat !== undefined && depot) {
+                                    const distRetour = haversineDistance(lat, lon, depot[0], depot[1]);
+                                    const tempsTrajetRetour = distRetour * 5; // 1 km = 5 minutes
+                                    const tempsRetourTotal = tempsDernier + tempsService + tempsTrajetRetour;
+                                    heureFin = uniteVersHeureFormat(Math.round(tempsRetourTotal));
+                                } else {
+                                    heureFin = uniteVersHeureFormat(tempsDernier + tempsService);
+                                }
+                            }
+                        }
+                        
+                        horairesHtml += `<div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.15); border-radius: 4px; border-left: 3px solid ${color};">`;
+                        horairesHtml += `<div style="font-weight: 600; margin-bottom: 5px; color: #fff;">🚚 Livreur ${vehiculeNum}</div>`;
+                        horairesHtml += `<div style="font-size: 11px; margin-left: 10px; margin-bottom: 3px; color: #fff;">⏰ Début de tournée : ${heureDebut}</div>`;
+                        horairesHtml += `<div style="font-size: 11px; margin-left: 10px; margin-bottom: 3px; color: #fff;">⏰ Fin de tournée : ${heureFin}</div>`;
+                        horairesHtml += `<div style="font-size: 11px; margin-left: 10px; margin-bottom: 5px; color: #fff;">📏 Distance parcourue : ${distanceVehicule} km</div>`;
+                        horairesHtml += `<div style="font-size: 11px; margin-left: 10px; margin-top: 5px;"><strong style="color: #fff;">Itinéraire :</strong></div>`;
+                        
+                        tournee.forEach((nodeIdx, pos) => {
+                            if (nodeIdx === 0) {
+                                // dépôt
+                                if (pos === 0) {
+                                    // départ du dépôt - toujours 08:00
+                                    horairesHtml += `<div style="font-size: 11px; margin-left: 20px; color: #fff;">📍 Dépôt (départ) : 08:00</div>`;
+                                } else {
+                                    // retour au dépôt - utiliser l'heure de fin calculée
+                                    horairesHtml += `<div style="font-size: 11px; margin-left: 20px; color: #fff;">📍 Dépôt (retour) : ${heureFin}</div>`;
+                                }
+                            } else if (nodeIdx <= clients.length) {
+                                // client
+                                const clientNum = nodeIdx;
+                                const heure = uniteVersHeureFormat(tempsArrivees[nodeIdx] || 0);
+                                horairesHtml += `<div style="font-size: 11px; margin-left: 20px; color: #fff;">🔵 Client ${clientNum} : ${heure}</div>`;
+                            } else if (stations.length > 0) {
+                                // station (VRP vert)
+                                const stationIdx = nodeIdx - 1 - clients.length;
+                                if (stationIdx < stations.length) {
+                                    const heure = uniteVersHeureFormat(tempsArrivees[nodeIdx] || 0);
+                                    horairesHtml += `<div style="font-size: 11px; margin-left: 20px; color: #fff;">🟢 Station ${stationIdx + 1} : ${heure}</div>`;
+                                }
+                            }
+                        });
+                        
+                        horairesHtml += '</div>';
+                    }
+                });
+                
+                horairesHtml += '</div></div>';
+                
+                // horaires par client (quand chaque client reçoit son colis)
+                horairesHtml += '<div style="margin-top: 15px;"><strong style="color: #fff;">📦 Horaires de livraison par client :</strong><div style="max-height: 100px; overflow-y: auto; margin-top: 5px;">';
+                
+                // créer un mapping client -> heure d'arrivée
+                const horairesClients = {};
+                data.tournees.forEach((tournee, idx) => {
+                    // calculer les horaires d'arrivée pour cette tournée
+                    const tempsArrivees = calculerHorairesArrivee(tournee, depot, clients, stations, fenetres_temps);
+                    if (tempsArrivees) {
+                        tournee.forEach((nodeIdx) => {
+                            if (nodeIdx > 0 && nodeIdx <= clients.length) {
+                                const clientNum = nodeIdx;
+                                const heure = uniteVersHeureFormat(tempsArrivees[nodeIdx] || 0);
+                                horairesClients[clientNum] = {
+                                    heure: heure,
+                                    vehicule: idx + 1
+                                };
+                            }
+                        });
+                    }
+                });
+                
+                // afficher par ordre de numéro de client
+                Object.keys(horairesClients).sort((a, b) => parseInt(a) - parseInt(b)).forEach(clientNum => {
+                    const info = horairesClients[clientNum];
+                    horairesHtml += `<div style="font-size: 11px; margin-bottom: 3px; padding: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; color: #fff;">`;
+                    horairesHtml += `🔵 Client ${clientNum} : livraison à ${info.heure} (Livreur ${info.vehicule})`;
+                    horairesHtml += `</div>`;
+                });
+                
+                horairesHtml += '</div></div>';
+                horairesHtml += '</div>';
+                horairesDiv.innerHTML = horairesHtml;
+            } else {
+                horairesDiv.innerHTML = '';
+            }
         }
         
         // initialisation

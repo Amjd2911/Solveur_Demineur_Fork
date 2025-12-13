@@ -1,19 +1,6 @@
 # Optimisation de Tournées de Livraison (VRP)
 
-## 📋 Table des matières
-
-1. [Présentation](#présentation)
-2. [Installation](#installation)
-3. [Utilisation](#utilisation)
-4. [Tests](#tests)
-5. [Contexte théorique](#contexte-théorique)
-6. [Architecture technique](#architecture-technique)
-7. [Performances](#performances)
-8. [Qualité du code](#qualité-du-code)
-
----
-
-## 🎯 Présentation
+## 📋 Présentation du projet
 
 Ce projet propose une solution complète pour l'optimisation de tournées de véhicules (Vehicle Routing Problem, VRP) avec une interface web interactive. Le système supporte deux variantes principales :
 
@@ -24,21 +11,34 @@ Ce projet propose une solution complète pour l'optimisation de tournées de vé
 
 - ✅ Interface web interactive avec visualisation cartographique
 - ✅ Résolution en temps réel avec suivi de progression
-- ✅ Support de multiples véhicules
+- ✅ Support de multiples véhicules avec capacités individuelles
 - ✅ Contraintes de capacité et fenêtres temporelles
 - ✅ Gestion de l'autonomie pour véhicules électriques
-- ✅ Visualisation des tournées sur carte interactive
+- ✅ Visualisation des tournées sur carte interactive (Leaflet)
+- ✅ Calcul de distances réelles avec formule de Haversine (GPS)
 
 ### Technologies utilisées
 
 - **Backend** : Python 3.12+, Flask, OR-Tools CP-SAT
 - **Frontend** : HTML5, JavaScript, Leaflet.js
-- **Optimisation** : Google OR-Tools (Constraint Programming)
-- **Visualisation** : Folium, Leaflet
+- **Optimisation** : Google OR-Tools (Constraint Programming - Satisfiability)
+- **Visualisation** : Leaflet
 
 ---
 
-## 🚀 Installation
+## 👥 Présentation du groupe
+
+**Membres du projet :**
+- Alexis DHERMY
+- Clément CARON
+- Grégoire BRUN
+
+**Contexte :**
+Projet développé dans le cadre du cours d'Intelligence Artificielle II à l'EPF.
+
+---
+
+## 🚀 Installation et lancement du code
 
 ### Prérequis
 
@@ -47,37 +47,34 @@ Ce projet propose une solution complète pour l'optimisation de tournées de vé
 
 ### Étapes d'installation
 
-1. **Cloner le dépôt** (si applicable) ou naviguer vers le répertoire du projet
+1. **Naviguer vers le répertoire du projet**
+   ```bash
+   cd VRP-Alexis-Clement-Gregoire
+   ```
 
 2. **Créer un environnement virtuel** (recommandé)
-
-```bash
-python -m venv venv
-```
+   ```bash
+   python -m venv venv
+   ```
 
 3. **Activer l'environnement virtuel**
-
-   - Sur Windows (PowerShell) :
+   
+   Sur Windows (PowerShell) :
    ```powershell
    .\venv\Scripts\Activate.ps1
    ```
-
-   - Sur Linux/Mac :
+   
+   Sur Linux/Mac :
    ```bash
    source venv/bin/activate
    ```
 
 4. **Installer les dépendances**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 💻 Utilisation
-
-### Démarrage de l'application
+### Lancement de l'application
 
 ```bash
 python main.py
@@ -85,7 +82,7 @@ python main.py
 
 L'application démarre sur `http://localhost:5000`
 
-### Interface web
+### Utilisation de l'interface web
 
 1. **Ouvrir le navigateur** à l'adresse `http://localhost:5000`
 2. **Configurer le problème** :
@@ -99,58 +96,15 @@ L'application démarre sur `http://localhost:5000`
 ### Paramètres configurables
 
 - **Nombre de véhicules** : nombre de véhicules disponibles
-- **Capacité** : capacité maximale de chaque véhicule (1 client = 10 unités de capacité)
-- **Limite de temps** : temps maximum alloué à la résolution (en secondes)
 - **Type VRP** : classique ou vert (électrique)
-- **Autonomie** : pour VRP vert, autonomie maximale de la batterie
+- **Capacité** : capacité maximale de chaque véhicule (1 client = 10 unités de capacité par défaut)
+- **Autonomie** : autonomie maximale de la batterie des véhicules électriques
+- **Taille des colis** : taille de chaque colis pour chaque client
+- **Mode de raisonnement** : mode de raisonnement qui gère le temps de résolution (rapide, normal, exploratoire)
 
 ---
 
-## 🧪 Tests
-
-### Tests manuels
-
-1. **Test de démarrage** :
-   ```bash
-   python main.py
-   ```
-   Vérifier que le serveur démarre sans erreur et que l'interface est accessible.
-
-2. **Test de résolution simple** :
-   - Créer un problème avec 3-5 clients
-   - Lancer la résolution
-   - Vérifier que des tournées sont générées
-
-3. **Test VRP vert** :
-   - Sélectionner le mode "VRP Vert"
-   - Ajouter au moins une station de recharge
-   - Vérifier que les contraintes d'autonomie sont respectées
-
-### Tests de validation
-
-Le système valide automatiquement :
-- ✅ Cohérence des données d'entrée
-- ✅ Respect des contraintes (capacité, fenêtres temporelles, autonomie)
-- ✅ Génération de solutions réalisables
-
-### Exemples de problèmes
-
-**Problème simple** :
-- 1 dépôt
-- 5 clients
-- 1 véhicule, capacité 50
-- Temps limite : 10 secondes
-
-**Problème complexe** :
-- 1 dépôt
-- 15 clients
-- 3 véhicules, capacité 100
-- Fenêtres temporelles
-- Temps limite : 30 secondes
-
----
-
-## 📚 Contexte théorique
+## 📚 Contexte, contenu théorique et technique
 
 ### Le problème VRP
 
@@ -190,7 +144,7 @@ Extension pour véhicules électriques avec :
 - **Stations de recharge** : possibilité de recharger à $B_{max}$ dans les stations
 - **Temps de recharge** : temps nécessaire pour recharger complètement
 
-### Méthode de résolution
+### Méthode de résolution : OR-Tools CP-SAT
 
 Le projet utilise **OR-Tools CP-SAT** (Constraint Programming - Satisfiability), une approche de programmation par contraintes qui :
 
@@ -207,36 +161,295 @@ Le projet utilise **OR-Tools CP-SAT** (Constraint Programming - Satisfiability),
 - Temps de résolution exponentiel dans le pire cas
 - Nécessite des limites de temps pour les grands problèmes
 
+### Ce qui a été mis en place dans le code
+
+#### 1. Calcul des distances
+
+Le système calcule les distances réelles entre les points GPS en utilisant la **formule de Haversine** :
+
+```python
+def _haversine_distance(self, lat1, lon1, lat2, lon2):
+    """calcule la distance en kilomètres entre deux points GPS"""
+    R = 6371.0  # rayon de la terre en kilomètres
+    # conversion en radians et calcul de la distance
+    ...
+```
+
+Cette méthode permet de calculer des distances précises sur la surface de la Terre plutôt que des distances euclidiennes planes.
+
+#### 2. Modélisation CP-SAT
+
+**Variables de décision** :
+
+- **Variables booléennes `x[i, j, k]`** : indique si le véhicule `k` emprunte l'arc de `i` à `j`
+  ```python
+  x[i, j, k] = model.NewBoolVar(f'x_{i}_{j}_{k}')
+  ```
+
+- **Variables de position `position[i, k]`** : position du nœud `i` dans la tournée du véhicule `k` (évite les sous-tours)
+  ```python
+  position[i, k] = model.NewIntVar(0, self.n, f'pos_{i}_{k}')
+  ```
+
+- **Variables de temps `temps_arrivee[i, k]`** : temps d'arrivée du véhicule `k` au nœud `i`
+  ```python
+  temps_arrivee[i, k] = model.NewIntVar(0, 10000, f'time_{i}_{k}')
+  ```
+
+- **Variables de charge `charge[i, k]`** : charge du véhicule `k` au nœud `i`
+  ```python
+  charge[i, k] = model.NewIntVar(0, capacite_k, f'load_{i}_{k}')
+  ```
+
+- **Variables de batterie `batterie[i, k]`** (VRP vert uniquement) : niveau de batterie du véhicule `k` au nœud `i`
+  ```python
+  batterie[i, k] = model.NewIntVar(0, batterie_max_k, f'battery_{i}_{k}')
+  ```
+
+**Contraintes principales** :
+
+1. **Contraintes de visite** : chaque client visité exactement une fois
+   ```python
+   for j in range(1, self.n):
+       model.Add(sum(x[i, j, k] for i, k) == 1)
+   ```
+
+2. **Conservation de flux** : entrées = sorties pour chaque nœud
+   ```python
+   model.Add(
+       sum(x[i, j, k] for i) == sum(x[j, i, k] for i)
+   )
+   ```
+
+3. **Contraintes de capacité** : la charge augmente de la demande du client
+   ```python
+   model.Add(
+       charge[j, k] >= charge[i, k] + demande_j - capacite_k * (1 - x[i, j, k])
+   )
+   ```
+
+4. **Fenêtres temporelles** : temps d'arrivée dans la fenêtre autorisée
+   ```python
+   model.Add(temps_arrivee[j, k] >= debut)
+   model.Add(temps_arrivee[j, k] <= fin)
+   ```
+
+5. **Anti-sous-tours** : position croissante le long de la tournée
+   ```python
+   model.Add(
+       position[j, k] >= position[i, k] + 1 - self.n * (1 - x[i, j, k])
+   )
+   ```
+
+6. **Contraintes de batterie** (VRP vert) : consommation et recharge
+   ```python
+   # consommation lors du trajet
+   model.Add(batterie[j, k] <= batterie[i, k] - consommation_ij + ...)
+   # recharge complète aux stations
+   if j_est_station:
+       model.Add(batterie[j, k] == batterie_max_k)
+   ```
+
+**Objectif** : minimiser la distance totale
+```python
+model.Minimize(sum(distance[i][j] * x[i, j, k] for i, j, k))
+```
+
+#### 3. Architecture asynchrone
+
+Le système utilise des **threads séparés** pour la résolution afin de garder l'interface web responsive :
+
+```python
+def _resoudre_vrp_thread(...):
+    """résout le VRP dans un thread séparé"""
+    # création du modèle VRP
+    vrp = VRPClassique(...) ou VRPVert(...)
+    # résolution avec mises à jour progressives
+    resultat = _resoudre_avec_progression(vrp, limite_temps, solution_id)
+```
+
+Les mises à jour progressives permettent de suivre l'évolution de la résolution en temps réel via l'API.
+
+#### 4. Gestion des capacités et autonomies multiples
+
+Le système supporte des capacités et autonomies différentes par véhicule :
+
+```python
+# capacités individuelles par véhicule
+capacites_vehicules = [50, 75, 100]  # pour 3 véhicules
+
+# autonomies individuelles par véhicule (VRP vert)
+autonomies_vehicules = [30.0, 40.0, 50.0]  # en kilomètres
+```
+
+#### 5. Indexation spéciale pour VRP vert
+
+Pour le VRP vert, les nœuds sont indexés de manière spéciale :
+- Index 0 : dépôt
+- Index 1..n : clients
+- Index n+1..n+m : stations de recharge
+
+Cette organisation permet de distinguer facilement les types de nœuds dans les contraintes.
+
 ### Complexité
 
 - **Complexité théorique** : NP-difficile
 - **Complexité pratique** : O($n! \cdot K$) dans le pire cas, mais les solveurs modernes utilisent des heuristiques efficaces
+- **Temps de résolution typique** :
+  - 5 clients, 1 véhicule : < 1s
+  - 10 clients, 2 véhicules : 2-5s
+  - 15 clients, 3 véhicules : 10-30s
+  - 20+ clients : 30s+ (limite de temps)
 
 ---
 
-## 🏗️ Architecture technique
-
-### Structure du projet
+## 🔄 Explication rapide du flux de données
 
 ```
-Optimisation-de-tournees-de-livraison-VRP/
-├── main.py                 # Point d'entrée principal
-├── requirements.txt        # Dépendances Python
-├── backend/
-│   ├── vrp_classique.py   # Implémentation VRP classique
-│   └── vrp_vert.py        # Implémentation VRP vert (E-VRP)
-└── frontend/
-    ├── app.py             # Application Flask
-    └── templates/
-        └── index.html     # Interface web
+┌─────────────────┐
+│  Interface Web  │
+│   (index.html)  │
+└────────┬────────┘
+         │
+         │ 1. Configuration du problème
+         │    (clics sur carte, paramètres)
+         ▼
+┌─────────────────┐
+│   Flask API     │
+│   (app.py)      │
+│  /api/solve     │
+└────────┬────────┘
+         │
+         │ 2. Création d'un thread de résolution
+         │
+         ▼
+┌─────────────────┐
+│ Thread séparé   │
+│ (asynchrone)    │
+└────────┬────────┘
+         │
+         │ 3. Instanciation VRPClassique ou VRPVert
+         │
+         ▼
+┌─────────────────┐
+│  Backend VRP    │
+│ vrp_classique.py│
+│  vrp_vert.py    │
+└────────┬────────┘
+         │
+         │ 4. Calcul matrice de distances (Haversine)
+         │ 5. Création modèle CP-SAT
+         │ 6. Définition variables et contraintes
+         │
+         ▼
+┌─────────────────┐
+│  OR-Tools       │
+│  CP-SAT Solver  │
+└────────┬────────┘
+         │
+         │ 7. Résolution (optimisation)
+         │
+         ▼
+┌─────────────────┐
+│ Extraction      │
+│ des résultats   │
+│ (tournées)      │
+└────────┬────────┘
+         │
+         │ 8. Stockage dans solutions_en_cours
+         │
+         ▼
+┌─────────────────┐
+│  API Polling    │
+│ /api/solution/  │
+└────────┬────────┘
+         │
+         │ 9. Récupération par l'interface
+         │
+         ▼
+┌─────────────────┐
+│ Visualisation   │
+│ sur carte       │
+│ (Leaflet)       │
+└─────────────────┘
 ```
 
-### Modules principaux
+### Étapes détaillées
+
+1. **Interface utilisateur** : l'utilisateur clique sur la carte pour définir dépôt, clients et stations (si VRP vert), puis configure les paramètres.
+
+2. **Requête API** : l'interface envoie une requête POST à `/api/solve` avec tous les paramètres du problème.
+
+3. **Thread de résolution** : Flask crée un thread séparé pour éviter de bloquer l'interface pendant la résolution.
+
+4. **Création du modèle** : selon le type (classique ou vert), instanciation de `VRPClassique` ou `VRPVert`.
+
+5. **Calcul des distances** : calcul de la matrice de distances entre tous les points avec la formule de Haversine.
+
+6. **Modélisation CP-SAT** : création des variables de décision et définition de toutes les contraintes.
+
+7. **Résolution** : OR-Tools CP-SAT explore l'espace de recherche pour trouver une solution optimale ou réalisable.
+
+8. **Mises à jour progressives** : pendant la résolution, des mises à jour sont envoyées à `solutions_en_cours` pour feedback temps réel.
+
+9. **Polling** : l'interface interroge régulièrement `/api/solution/<id>` pour récupérer l'état de la résolution.
+
+10. **Visualisation** : une fois la solution obtenue, les tournées sont affichées sur la carte Leaflet avec des couleurs différentes par véhicule.
+
+---
+
+## 🔮 Améliorations possibles
+
+### Algorithmes et performances
+
+1. **Heuristiques de construction** :
+   - Implémentation d'heuristiques (nearest neighbor, Clark-Wright savings)
+   - Utilisation comme solution initiale pour accélérer CP-SAT
+
+2. **Algorithmes méta-heuristiques** :
+   - Algorithmes génétiques pour grandes instances
+   - Simulated annealing
+   - Hybridation exact/heuristique
+
+3. **Optimisations techniques** :
+   - Parallélisation multi-thread pour plusieurs véhicules
+   - Cache des matrices de distances
+   - Pré-traitement pour éliminer les arcs impossibles
+   - Réduction du problème (élimination de variables redondantes)
+
+---
+
+## 📁 Structure du projet
+
+```
+VRP-Alexis-Clement-Gregoire/
+├── main.py                      # Point d'entrée principal
+├── requirements.txt             # Dépendances Python
+├── README.md                    # Documentation du projet
+│
+├── backend/                     # Logique de résolution VRP
+│   ├── vrp_classique.py        # Implémentation VRP classique
+│   └── vrp_vert.py             # Implémentation VRP vert (E-VRP)
+│
+└── frontend/                    # Interface web
+    ├── app.py                   # Application Flask (API)
+    ├── templates/
+    │   └── index.html          # Interface web interactive
+    └── static/
+        └── images/             # Images et logos
+```
+
+### Description des modules
+
+#### `main.py`
+Script de démarrage qui :
+- Vérifie les dépendances
+- Lance l'application Flask
+- Affiche les informations de démarrage
 
 #### `backend/vrp_classique.py`
-
 Classe `VRPClassique` qui implémente :
-- Calcul de matrice de distances euclidiennes
+- Calcul de matrice de distances euclidiennes (Haversine)
 - Modélisation CP-SAT avec variables de décision
 - Contraintes de capacité, fenêtres temporelles, flux
 - Extraction et formatage des solutions
@@ -247,7 +460,6 @@ Classe `VRPClassique` qui implémente :
 - Contraintes de conservation de flux et élimination de sous-tours
 
 #### `backend/vrp_vert.py`
-
 Classe `VRPVert` qui étend le VRP classique avec :
 - Gestion des stations de recharge
 - Variables de niveau de batterie
@@ -260,7 +472,6 @@ Classe `VRPVert` qui étend le VRP classique avec :
 - Temps de recharge intégré dans les fenêtres temporelles
 
 #### `frontend/app.py`
-
 Application Flask avec :
 - Route principale `/` : rendu de l'interface
 - API `/api/solve` : lancement de la résolution
@@ -270,215 +481,37 @@ Application Flask avec :
 **Architecture asynchrone** :
 - Résolution dans des threads séparés
 - Mises à jour progressives pour feedback temps réel
-- Gestion d'état avec dictionnaire global
+- Gestion d'état avec dictionnaire global `solutions_en_cours`
 
 #### `frontend/templates/index.html`
-
 Interface web interactive avec :
 - Carte Leaflet pour visualisation
 - Gestion des événements de clic (dépôt, clients, stations)
 - Communication AJAX avec le backend
 - Affichage dynamique des tournées et statistiques
 
-### Flux de données
-
-```
-Interface Web → Flask API → Thread de résolution → OR-Tools → Solution → Interface Web
-```
-
-1. L'utilisateur configure le problème sur l'interface
-2. Requête POST vers `/api/solve` avec les paramètres
-3. Création d'un thread de résolution
-4. Instanciation de `VRPClassique` ou `VRPVert`
-5. Résolution avec OR-Tools CP-SAT
-6. Mises à jour progressives via `solutions_en_cours`
-7. Interface récupère les résultats via polling ou SSE
-8. Visualisation sur la carte Leaflet
-
 ---
 
-## ⚡ Performances
+## 📖 Références
 
-### Métriques de performance
-
-#### Temps de résolution
-
-| Taille du problème | Temps moyen | Statut |
-|-------------------|-------------|--------|
-| 5 clients, 1 véhicule | < 1s | Optimal |
-| 10 clients, 2 véhicules | 2-5s | Optimal/Feasible |
-| 15 clients, 3 véhicules | 10-30s | Feasible |
-| 20+ clients | 30s+ | Feasible (limite) |
-
-**Facteurs influençant les performances** :
-- Nombre de clients : impact exponentiel
-- Nombre de véhicules : impact linéaire
-- Contraintes (fenêtres temporelles) : augmentation modérée
-- VRP vert vs classique : +20-30% de temps (contraintes supplémentaires)
-
-#### Utilisation mémoire
-
-- **Problèmes petits** (< 10 clients) : < 100 MB
-- **Problèmes moyens** (10-20 clients) : 100-500 MB
-- **Problèmes grands** (> 20 clients) : 500 MB - 2 GB
-
-La mémoire est principalement utilisée par :
-- Matrice de distances : O($n^2$)
-- Variables CP-SAT : O($n^2 \cdot K$)
-- Structures de données OR-Tools
-
-### Optimisations implémentées
-
-1. **Limite de temps** : évite les résolutions infinies
-2. **Résolution asynchrone** : interface reste responsive
-3. **Mises à jour progressives** : feedback utilisateur sans bloquer
-4. **Conversion en entiers** : distances multipliées par 100 pour CP-SAT (meilleure performance)
-
-### Limitations actuelles
-
-- **Taille maximale pratique** : ~20 clients pour résolution en temps raisonnable
-- **Pas de parallélisation** : résolution séquentielle
-- **Pas de pré-traitement** : pas d'heuristiques de réduction du problème
-- **Pas de cache** : recalcul à chaque résolution
-
-### Améliorations possibles
-
-- Implémentation d'heuristiques (nearest neighbor, savings)
-- Parallélisation multi-thread pour plusieurs véhicules
-- Cache des matrices de distances
-- Pré-traitement pour éliminer les arcs impossibles
-- Utilisation de solveurs hybrides (exact + heuristique)
-
----
-
-## 🔍 Qualité du code
-
-### Standards de codage
-
-Le code suit les conventions Python (PEP 8) avec :
-- Noms de variables en minuscules avec underscores
-- Docstrings pour toutes les classes et méthodes principales
-- Commentaires en français (conformément aux règles du projet)
-- Type hints pour les signatures de fonctions
-
-### Structure et organisation
-
-**Points forts** :
-- ✅ Séparation claire backend/frontend
-- ✅ Classes bien définies avec responsabilités uniques
-- ✅ Gestion d'erreurs avec try/except
-- ✅ Code modulaire et réutilisable
-
-**Exemple de structure** :
-
-```python
-class VRPClassique:
-    """Classe bien documentée avec docstring"""
-    
-    def __init__(self, ...):
-        """Initialisation claire avec type hints"""
-        
-    def resoudre(self, limite_temps: int = 30) -> Dict:
-        """Méthode principale avec documentation"""
-```
-
-### Gestion des erreurs
-
-- Vérification des dépendances au démarrage
-- Gestion des exceptions dans les threads
-- Retour de statuts explicites ('optimal', 'feasible', 'infeasible', 'erreur')
-- Messages d'erreur informatifs pour l'utilisateur
-
-### Maintenabilité
-
-**Facilité d'extension** :
-- Ajout de nouvelles contraintes : modifier les classes VRP
-- Nouveaux types de VRP : créer une nouvelle classe héritant du pattern existant
-- Amélioration de l'interface : templates HTML modulaires
-
-**Documentation** :
-- Docstrings pour les méthodes publiques
-- Commentaires pour les sections complexes
-- README complet (ce fichier)
-
-### Points d'amélioration
-
-1. **Tests unitaires** : ajouter des tests automatisés (pytest)
-2. **Validation des entrées** : vérification plus stricte des paramètres
-3. **Logging** : système de logs structuré au lieu de print
-4. **Configuration** : fichier de configuration externe
-5. **Documentation API** : Swagger/OpenAPI pour les endpoints
-
-### Dépendances
-
-Toutes les dépendances sont listées dans `requirements.txt` avec versions minimales :
-- `ortools>=9.8.3296` : solveur d'optimisation
-- `flask>=2.3.0` : framework web
-- `folium>=0.14.0` : génération de cartes
-- `numpy>=1.24.0` : calculs numériques
-
-**Sécurité** : toutes les dépendances sont des bibliothèques Python standard et bien maintenues.
-
----
-
-## 📖 Perspectives
-
-### Améliorations futures
-
-1. **Algorithmes avancés** :
-   - Implémentation d'heuristiques (Clark-Wright, nearest neighbor)
-   - Algorithmes méta-heuristiques (genetic algorithms, simulated annealing)
-   - Hybridation exact/heuristique
-
-2. **Fonctionnalités** :
-   - Import/export de problèmes (formats standards)
-   - Historique des solutions
-   - Comparaison de solutions
-   - Export des résultats (CSV, JSON, PDF)
-
-3. **Interface utilisateur** :
-   - Édition des paramètres clients (demandes, fenêtres temporelles)
-   - Animation des tournées
-   - Statistiques détaillées
-   - Mode sombre
-
-4. **Performance** :
-   - Parallélisation
-   - Cache intelligent
-   - Pré-traitement automatique
-   - Résolution incrémentale
-
-5. **Extensions du problème** :
-   - VRP avec time windows multiples
-   - VRP avec pick-up and delivery
-   - VRP multi-dépôts
-   - VRP dynamique (clients apparaissant en temps réel)
-
-### Applications réelles
-
-Ce système peut être adapté pour :
-- **Logistique urbaine** : optimisation des livraisons en ville
-- **Transport scolaire** : planification des trajets de bus
-- **Services à domicile** : optimisation des tournées de techniciens
-- **Collecte de déchets** : planification des tournées de camions
-- **Livraison e-commerce** : optimisation des tournées de livreurs
-
----
-
-## 📝 Licence
-
-Ce projet est fourni à des fins éducatives et de recherche.
-
----
-
-## 👥 Auteurs
-
-Projet développé dans le cadre du cours d'Intelligence Artificielle II - Optimisation.
-
----
-
-## 📚 Références
+### Documentation technique
 
 - **OR-Tools Documentation** : https://developers.google.com/optimization
-- **VRP Theory** : Toth, P., & Vigo, D. (2014). *Vehicle Routing: Problems, Methods, and Applications*
-- **CP-SAT** : Perron, L., & Furnon, V. (2019). *OR-Tools*
+- **CP-SAT Solver** : https://developers.google.com/optimization/cp/cp_solver
+- **Flask Documentation** : https://flask.palletsprojects.com/
+- **Leaflet.js** : https://leafletjs.com/
+
+### Littérature académique
+
+- **Toth, P., & Vigo, D.** (2014). *Vehicle Routing: Problems, Methods, and Applications*. SIAM.
+- **Perron, L., & Furnon, V.** (2019). *OR-Tools*. Google AI.
+
+### Articles et ressources
+
+- **VRP Variants** : https://en.wikipedia.org/wiki/Vehicle_routing_problem
+- **E-VRP** : Schneider, M., Stenger, A., & Goeke, D. (2014). The Electric Vehicle-Routing Problem with Time Windows and Recharging Stations. *Transportation Science*, 48(4), 500-520.
+
+### Formules mathématiques
+
+- **Formule de Haversine** : https://en.wikipedia.org/wiki/Haversine_formula
+- **Constraint Programming** : https://en.wikipedia.org/wiki/Constraint_programming

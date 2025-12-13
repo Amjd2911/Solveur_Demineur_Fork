@@ -46,7 +46,8 @@ class VRPClassique:
         self.clients = clients
         self.demandes = demandes
         self.fenetres_temps = fenetres_temps or [(0, 10000)] * len(clients)
-        self.temps_service = temps_service or [0] * len(clients)
+        # temps de service constant de 10 unités (10 minutes) par défaut
+        self.temps_service = temps_service or [10] * len(clients)
         self.nombre_vehicules = nombre_vehicules
         
         # gestion des capacités : priorité à capacites_vehicules
@@ -199,7 +200,8 @@ class VRPClassique:
                 # temps de trajet et service
                 for i in range(self.n):
                     if i != j:
-                        dist = int(self.distances[i][j])
+                        # 1 km = 5 minutes (5 unités de temps)
+                        dist = int(self.distances[i][j] * 5)
                         # temps de service : 0 pour le dépôt, sinon temps_service[i-1]
                         temps_serv = self.temps_service[i-1] if i > 0 else 0
                         model.Add(
@@ -239,12 +241,20 @@ class VRPClassique:
         # extraction des résultats
         tournees = []
         distance_totale = 0
+        distances_vehicules = []  # distance par véhicule
+        temps_arrivees = {}  # {véhicule: {nœud: temps}}
+        temps_retour_depot = {}  # {véhicule: temps} - temps de retour au dépôt
         
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             for k in range(self.nombre_vehicules):
                 tournee = [0]  # commence au dépôt
                 current = 0
                 distance_vehicule = 0
+                temps_arrivees_k = {}
+                dernier_node = 0  # pour calculer le retour
+                
+                # temps d'arrivée au dépôt (départ)
+                temps_arrivees_k[0] = solver.Value(temps_arrivee[0, k])
                 
                 while True:
                     trouve = False
@@ -252,21 +262,54 @@ class VRPClassique:
                         if j != current and solver.Value(x[current, j, k]) == 1:
                             tournee.append(j)
                             distance_vehicule += self.distances[current][j]
+                            # extraire le temps d'arrivée au nœud j
+                            temps_arrivees_k[j] = solver.Value(temps_arrivee[j, k])
+                            dernier_node = j
                             current = j
                             trouve = True
                             break
                     
-                    if not trouve or current == 0:
+                    if not trouve:
+                        break
+                    
+                    # si on est revenu au dépôt, c'est la fin de la tournée
+                    if current == 0:
+                        # mettre à jour le temps d'arrivée au dépôt (retour)
+                        temps_arrivees_k[0] = solver.Value(temps_arrivee[0, k])
                         break
                 
                 if len(tournee) > 1:  # si le véhicule a été utilisé
                     tournees.append(tournee)
                     distance_totale += distance_vehicule
+                    distances_vehicules.append(distance_vehicule)
+                    temps_arrivees[k] = temps_arrivees_k
+                    
+                    # calculer le temps de retour au dépôt
+                    # toujours calculer manuellement à partir du dernier nœud visité (non-dépôt)
+                    # trouver le dernier nœud non-dépôt de la tournée
+                    dernier_node_non_depot = dernier_node
+                    if tournee[-1] == 0 and len(tournee) > 2:
+                        # si la tournée se termine au dépôt, utiliser l'avant-dernier nœud
+                        dernier_node_non_depot = tournee[-2]
+                    
+                    if dernier_node_non_depot > 0:
+                        # calculer : temps arrivée dernier nœud + distance retour + temps service
+                        temps_dernier = solver.Value(temps_arrivee[dernier_node_non_depot, k])
+                        # 1 km = 5 minutes (5 unités de temps)
+                        dist_retour = int(self.distances[dernier_node_non_depot][0] * 5)
+                        temps_service_dernier = self.temps_service[dernier_node_non_depot-1] if dernier_node_non_depot > 0 else 0
+                        temps_retour_depot[k] = temps_dernier + temps_service_dernier + dist_retour
+                    else:
+                        # cas où le véhicule n'a pas quitté le dépôt (ne devrait pas arriver)
+                        temps_retour_depot[k] = solver.Value(temps_arrivee[0, k])
         
         return {
             'statut': 'optimal' if status == cp_model.OPTIMAL else 'feasible' if status == cp_model.FEASIBLE else 'infeasible',
             'tournees': tournees,
             'distance_totale': distance_totale,
-            'nombre_vehicules_utilises': len(tournees)
+            'distances_vehicules': distances_vehicules,
+            'nombre_vehicules_utilises': len(tournees),
+            'temps_arrivees': temps_arrivees,
+            'temps_retour_depot': temps_retour_depot
         }
 
