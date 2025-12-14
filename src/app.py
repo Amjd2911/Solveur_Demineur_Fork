@@ -1,11 +1,25 @@
 """Streamlit front-end for interactive Job-Shop analysis."""
 
+import logging
+from typing import Optional, Dict
+
 import pandas as pd
 import streamlit as st
 
 from data import JobShopInstance, get_instances, instance_horizon
 from solver import SolutionResult, solve
-from visualization import gantt_figure, operations_dataframe, save_figure
+from visualization import gantt_figure, operations_dataframe, save_figure, DEFAULT_GANTT_HEIGHT
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# UI Constants
+DEFAULT_TIME_LIMIT = 8.0
+DEFAULT_NUM_WORKERS = 8
+MIN_TIME_LIMIT = 0.0
+MAX_TIME_LIMIT = 60.0
+BASELINE_SCENARIO = "preparation_commandes"
 
 
 st.set_page_config(page_title="Job-Shop CSP avec OR-Tools", layout="wide")
@@ -25,15 +39,53 @@ st.markdown(
 
 # Simple cache to avoid re-solving identical instances repeatedly during UI exploration.
 @st.cache_data(show_spinner=False)
-def cached_solve(instance_name: str, time_limit: float | None, num_workers: int = 8) -> SolutionResult:
-    instances = get_instances()
-    instance = instances[instance_name]
-    return solve(instance=instance, time_limit=time_limit, num_workers=num_workers)
+def cached_solve(
+    instance_name: str, 
+    time_limit: Optional[float], 
+    num_workers: int = DEFAULT_NUM_WORKERS
+) -> SolutionResult:
+    """Cached solver function to avoid redundant computations.
+    
+    Args:
+        instance_name: Name of the instance to solve
+        time_limit: Maximum solver time in seconds
+        num_workers: Number of parallel search workers
+        
+    Returns:
+        SolutionResult: The solution with status and statistics
+    """
+    try:
+        instances = get_instances()
+        if instance_name not in instances:
+            logger.error(f"Instance '{instance_name}' not found")
+            return SolutionResult(
+                status="ERROR",
+                makespan=None,
+                operations=[],
+                solver_statistics={"error": "Instance not found"},
+            )
+        
+        instance = instances[instance_name]
+        return solve(instance=instance, time_limit=time_limit, num_workers=num_workers)
+    except Exception as e:
+        logger.error(f"Error solving instance '{instance_name}': {e}")
+        return SolutionResult(
+            status="ERROR",
+            makespan=None,
+            operations=[],
+            solver_statistics={"error": str(e)},
+        )
 
 
-def describe_instance(instance: JobShopInstance):
+def describe_instance(instance: JobShopInstance) -> None:
+    """Display instance details in the UI.
+    
+    Args:
+        instance: The job shop instance to describe
+    """
     st.subheader("Instance")
     st.caption(instance.description)
+    
     nb_jobs = len(instance.jobs)
     nb_ops = sum(len(job.operations) for job in instance.jobs)
     horizon = instance_horizon(instance)
@@ -64,7 +116,14 @@ def describe_instance(instance: JobShopInstance):
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
 def machine_utilization(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute per-machine load and utilization."""
+    """Compute per-machine load and utilization.
+    
+    Args:
+        df: DataFrame containing operation schedules
+        
+    Returns:
+        DataFrame with workload and utilization percentage per machine
+    """
     if df.empty:
         return pd.DataFrame(columns=["machine", "workload", "utilisation_%", "horizon"])
     horizon = df["end"].max()
@@ -79,9 +138,16 @@ def machine_utilization(df: pd.DataFrame) -> pd.DataFrame:
     return util
 
 
-def show_solution(solution: SolutionResult, zoom_max: int):
+def show_solution(solution: SolutionResult, zoom_max: int) -> None:
+    """Display the solution with Gantt chart and metrics.
+    
+    Args:
+        solution: The solver result to display
+        zoom_max: Maximum x-axis value for the Gantt chart
+    """
     if solution.makespan is None:
-        st.error(f"Aucune solution: statut {solution.status}")
+        error_msg = solution.solver_statistics.get("error", solution.status)
+        st.error(f"Aucune solution: {error_msg}")
         return
 
     st.subheader("Solution CP-SAT")
@@ -101,18 +167,36 @@ def show_solution(solution: SolutionResult, zoom_max: int):
 
     st.subheader("Diagramme de Gantt")
     st.caption("Couleurs par commande, axe Y = ressources (stations), ligne verticale = makespan.")
-    fig = gantt_figure(solution, maintenance=st.session_state.get("maintenance_for_plot", []), x_max=zoom_max)
-    if fig is not None:
-        fig.update_layout(height=520, plot_bgcolor="#fbfdff")
-        st.plotly_chart(fig, use_container_width=True)
-        if st.button("Exporter le Gantt en PNG"):
-            destination = save_figure(fig)
-            st.success(f"Export enregistre dans {destination}")
-    else:
-        st.warning("Aucune figure a afficher (solution vide).")
+    
+    try:
+        fig = gantt_figure(
+            solution, 
+            maintenance=st.session_state.get("maintenance_for_plot", []), 
+            x_max=zoom_max
+        )
+        if fig is not None:
+            fig.update_layout(height=DEFAULT_GANTT_HEIGHT, plot_bgcolor="#fbfdff")
+            st.plotly_chart(fig, use_container_width=True)
+            if st.button("Exporter le Gantt en PNG"):
+                try:
+                    destination = save_figure(fig)
+                    st.success(f"Export enregistre dans {destination}")
+                except IOError as e:
+                    st.error(f"Erreur lors de l'export: {e}")
+        else:
+            st.warning("Aucune figure a afficher (solution vide).")
+    except Exception as e:
+        logger.error(f"Error displaying Gantt chart: {e}")
+        st.error(f"Erreur lors de la creation du diagramme: {e}")
 
 
-def show_insights(solution: SolutionResult, baseline: SolutionResult | None):
+def show_insights(solution: SolutionResult, baseline: Optional[SolutionResult]) -> None:
+    """Display pedagogical insights comparing solution to baseline.
+    
+    Args:
+        solution: The current solution to analyze
+        baseline: The baseline solution for comparison (optional)
+    """
     st.subheader("Insights pedagogiques")
     current_ms = solution.makespan or 0
     base_ms = baseline.makespan if baseline else None
@@ -136,6 +220,24 @@ def show_insights(solution: SolutionResult, baseline: SolutionResult | None):
             "- Les conflits CP-SAT refletent la difficulte de la recherche (plus il y en a, plus le probleme est serre).\n"
             "- L'utilisation par ressource indique les goulets d'etranglement (utilisation proche de 100%)."
         )
+
+
+def get_scenario_labels() -> Dict[str, str]:
+    """Return human-readable labels for scenarios."""
+    return {
+        "preparation_commandes": "Scenario simpliste (flux nominal)",
+        "preparation_commandes_maintenance": "Scenario complique (maintenance planifiee)",
+        "preparation_commandes_rush": "Scenario rush (commande flash R99)",
+    }
+
+
+def get_scenario_tips() -> Dict[str, str]:
+    """Return helpful tips for each scenario."""
+    return {
+        "preparation_commandes": "Flux nominal: observe l'enchainement naturel des 3 commandes.",
+        "preparation_commandes_maintenance": "Maintenance: note les blocs grises qui bloquent les ressources et decalent le planning.",
+        "preparation_commandes_rush": "Commande flash R99: verifiez si elle se glisse avant certaines etapes des autres commandes.",
+    }
 
 
 def main():
@@ -170,12 +272,8 @@ def main():
 
     instances = get_instances()
     instance_names = list(instances.keys())
-    scenario_labels = {
-        "preparation_commandes": "Scenario simpliste (flux nominal)",
-        "preparation_commandes_maintenance": "Scenario complique (maintenance planifiee)",
-        "preparation_commandes_rush": "Scenario rush (commande flash R99)",
-    }
-    baseline_key = "preparation_commandes"
+    scenario_labels = get_scenario_labels()
+    baseline_key = BASELINE_SCENARIO
 
     with st.sidebar:
         st.header("Configuration solveur")
@@ -190,7 +288,11 @@ def main():
         horizon = instance_horizon(instance)
         st.session_state["maintenance_for_plot"] = instance.maintenance
         time_limit = st.slider(
-            "Limite de temps solveur (secondes, 0 = sans limite)", 0.0, 60.0, 8.0, step=0.5
+            "Limite de temps solveur (secondes, 0 = sans limite)",
+            MIN_TIME_LIMIT,
+            MAX_TIME_LIMIT,
+            DEFAULT_TIME_LIMIT,
+            step=0.5
         )
         zoom_max = st.slider(
             "Zoom temporel (borne max)",
@@ -202,11 +304,7 @@ def main():
         )
         run_requested = st.button("Resoudre / Recalculer", type="primary")
 
-    scenario_tips = {
-        "preparation_commandes": "Flux nominal: observe l'enchainement naturel des 3 commandes.",
-        "preparation_commandes_maintenance": "Maintenance: note les blocs grises qui bloquent les ressources et decalent le planning.",
-        "preparation_commandes_rush": "Commande flash R99: verifiez si elle se glisse avant certaines etapes des autres commandes.",
-    }
+    scenario_tips = get_scenario_tips()
     st.info(scenario_labels.get(chosen, instance.description))
     st.caption(scenario_tips.get(chosen, ""))
     describe_instance(instance)

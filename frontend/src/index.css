@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply min-h-screen;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-attachment: fixed;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* Dark Theme (Default) */
+  body.dark-theme {
+    @apply bg-gradient-to-br from-slate-900 via-red-900 to-orange-900 text-white;
+  }
+
+  /* Light Theme - Vibrant and Professional */
+  body.light-theme {
+    @apply bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 text-gray-900;
+  }
+
+  body.light-theme .glass-panel {
+    @apply bg-white/90 backdrop-blur-xl border-gray-200 shadow-xl;
+  }
+
+  body.light-theme .card {
+    @apply bg-white border-gray-200 text-gray-900 shadow-lg;
+  }
+
+  body.light-theme .btn-primary {
+    @apply bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/30;
+  }
+
+  body.light-theme .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-300;
+  }
+
+  body.light-theme .input-field {
+    @apply bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-purple-500 focus:border-purple-500 shadow-sm;
+  }
+
+  body.light-theme .metric-card {
+    @apply bg-gradient-to-br from-white to-purple-50 border-purple-200 shadow-md;
+  }
+
+  body.light-theme .gradient-text {
+    @apply bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent;
+  }
+
+  body.light-theme header {
+    @apply bg-white/95 border-gray-200 shadow-lg;
+  }
+
+  body.light-theme h1, 
+  body.light-theme h2, 
+  body.light-theme h3 {
+    @apply text-gray-900;
+  }
+
+  body.light-theme p,
+  body.light-theme span,
+  body.light-theme label {
+    @apply text-gray-700;
+  }
+
+  body.light-theme .text-white\/70 {
+    @apply text-gray-600;
+  }
+
+  body.light-theme .text-white\/50 {
+    @apply text-gray-500;
+  }
+
+  body.light-theme .bg-white\/10 {
+    @apply bg-gray-100 border-gray-200;
+  }
+
+  body.light-theme .bg-white\/5 {
+    @apply bg-gray-50 border-gray-100;
+  }
+
+  body.light-theme .border-white\/10 {
+    @apply border-gray-200;
+  }
+
+  body.light-theme .border-white\/20 {
+    @apply border-gray-300;
+  }
+
+  body.light-theme ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  body.light-theme ::-webkit-scrollbar-thumb {
+    @apply bg-purple-400;
+  }
+
+  body.light-theme ::-webkit-scrollbar-thumb:hover {
+    @apply bg-purple-500;
+  }
+
+  body.light-theme ::selection {
+    @apply bg-purple-200 text-purple-900;
+  }
+
+  /* Light theme SVG and chart colors */
+  body.light-theme .gantt-operation {
+    filter: brightness(0.85) saturate(1.2);
+  }
+
+  /* Button hover states for light theme */
+  body.light-theme button:hover {
+    @apply shadow-md;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6 shadow-2xl hover:bg-white/15 transition-all duration-300 animate-fade-in;
+  }
+  
+  .card-hover {
+    @apply card hover:shadow-xl hover:-translate-y-1 transition-all duration-300;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-500/50;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/10 backdrop-blur-md hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 border border-white/20;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-300;
+  }
+  
+  .metric-card {
+    @apply bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 shadow-xl;
+  }
+  
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl;
+  }
+
+  /* Light theme card shadows */
+  body.light-theme .card-hover:hover {
+    @apply shadow-2xl shadow-purple-500/20;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 bg-clip-text text-transparent;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(239, 68, 68, 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(239, 68, 68, 0.7);
+}
+
+/* Selection colors */
+::selection {
+  background: rgba(239, 68, 68, 0.3);
+  color: white;
+}

@@ -1,11 +1,15 @@
 """CP-SAT model for the Job-Shop Scheduling problem."""
 
+import logging
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from ortools.sat.python import cp_model
 
 from data import JobShopInstance, Operation, MaintenanceWindow, instance_horizon
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,7 +38,25 @@ def _safe_name(raw: str) -> str:
 
 
 def build_cp_model(instance: JobShopInstance) -> ModelData:
-    """Create the CP-SAT model with precedence and machine constraints."""
+    """Create the CP-SAT model with precedence and machine constraints.
+    
+    Constructs a constraint programming model with:
+    - Interval variables for each operation
+    - Precedence constraints within jobs
+    - No-overlap constraints per machine
+    - Maintenance window constraints
+    - Makespan minimization objective
+    
+    Args:
+        instance: The job shop instance to model
+        
+    Returns:
+        ModelData: Bundle containing the model, variables, and horizon
+        
+    Raises:
+        ValueError: If instance contains invalid data
+    """
+    logger.info(f"Building CP-SAT model for instance '{instance.name}'")
     model = cp_model.CpModel()
     horizon = instance_horizon(instance)
     task_vars: Dict[Tuple[str, int], TaskVars] = {}

@@ -1,5 +1,6 @@
 """Solve a Job-Shop instance with OR-Tools CP-SAT."""
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -7,6 +8,13 @@ from ortools.sat.python import cp_model
 
 from data import JobShopInstance
 from model import ModelData, build_cp_model
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Solver constants
+DEFAULT_NUM_WORKERS = 8
+DEFAULT_TIME_LIMIT = 30.0
 
 
 @dataclass(frozen=True)
@@ -42,17 +50,45 @@ def _status_name(status: int) -> str:
 def solve(
     instance: JobShopInstance,
     time_limit: Optional[float] = None,
-    num_workers: int = 8,
+    num_workers: int = DEFAULT_NUM_WORKERS,
 ) -> SolutionResult:
-    """Build the model, launch CP-SAT, and collect a structured solution."""
-    model_data: ModelData = build_cp_model(instance)
-    solver = cp_model.CpSolver()
-    if time_limit and time_limit > 0:
-        solver.parameters.max_time_in_seconds = time_limit
-    if num_workers and num_workers > 0:
-        solver.parameters.num_search_workers = num_workers
+    """Build the model, launch CP-SAT, and collect a structured solution.
+    
+    Args:
+        instance: The job shop instance to solve
+        time_limit: Maximum solver runtime in seconds (None for unlimited)
+        num_workers: Number of parallel search workers
+        
+    Returns:
+        SolutionResult: Contains status, makespan, operations, and statistics
+        
+    Raises:
+        ValueError: If instance is invalid or parameters are out of range
+    """
+    if num_workers <= 0:
+        raise ValueError(f"num_workers must be positive, got {num_workers}")
+    
+    if time_limit is not None and time_limit < 0:
+        raise ValueError(f"time_limit must be non-negative, got {time_limit}")
+    
+    try:
+        logger.info(f"Solving instance '{instance.name}' with {num_workers} workers")
+        model_data: ModelData = build_cp_model(instance)
+        solver = cp_model.CpSolver()
+        if time_limit and time_limit > 0:
+            solver.parameters.max_time_in_seconds = time_limit
+        if num_workers and num_workers > 0:
+            solver.parameters.num_search_workers = num_workers
 
-    status = solver.Solve(model_data.model)
+        status = solver.Solve(model_data.model)
+    except Exception as e:
+        logger.error(f"Error during model building or solving: {e}")
+        return SolutionResult(
+            status="ERROR",
+            makespan=None,
+            operations=[],
+            solver_statistics={"error": str(e)},
+        )
     status_label = _status_name(status)
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):

@@ -1,7 +1,11 @@
 """Data definitions and preloaded Job-Shop instances."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
+# Type aliases for better readability
+OperationTuple = Union[Tuple[str, int], Tuple[str, int, str]]
+JobSequences = Dict[str, List[OperationTuple]]
 
 
 @dataclass(frozen=True)
@@ -19,6 +23,7 @@ class Operation:
     machine: str
     duration: int
     label: str
+    setup_time: int = 0  # Time needed to prepare machine for this operation
 
 
 @dataclass(frozen=True)
@@ -27,12 +32,17 @@ class MaintenanceWindow:
     start: int
     duration: int
     label: str = "Maintenance"
+    is_recurring: bool = False  # For recurring maintenance
+    recurrence_interval: Optional[int] = None  # Repeat every N time units
 
 
 @dataclass(frozen=True)
 class Job:
     job_id: str
     operations: List[Operation]
+    priority: int = 3  # 1=critical, 2=high, 3=normal, 4=low
+    deadline: Optional[int] = None  # Must finish before this time
+    release_time: int = 0  # Can't start before this time
 
 
 @dataclass(frozen=True)
@@ -42,25 +52,54 @@ class JobShopInstance:
     machines: List[str]
     description: str
     maintenance: List[MaintenanceWindow] = field(default_factory=list)
+    created_at: Optional[str] = None  # Timestamp for custom instances
+    is_custom: bool = False  # Distinguish user-created from built-in
 
 
 def _make_instance(
     name: str,
-    job_sequences: Dict[str, List[Tuple[str, int] | Tuple[str, int, str]]],
+    job_sequences: JobSequences,
     description: str,
-    maintenance: List[MaintenanceWindow] | None = None,
+    maintenance: Optional[List[MaintenanceWindow]] = None,
 ) -> JobShopInstance:
-    """Expand a dictionary of operation sequences into a full instance."""
+    """Expand a dictionary of operation sequences into a full instance.
+    
+    Args:
+        name: Unique identifier for the instance
+        job_sequences: Mapping of job IDs to their operation sequences
+        description: Human-readable description of the instance
+        maintenance: Optional list of maintenance windows
+        
+    Returns:
+        JobShopInstance: Complete instance ready for solving
+        
+    Raises:
+        ValueError: If job_sequences is empty or contains invalid data
+    """
+    if not job_sequences:
+        raise ValueError("job_sequences cannot be empty")
+    
+    if not name.strip():
+        raise ValueError("name cannot be empty")
     jobs: List[Job] = []
     machine_set = set()
     for job_id, ops in job_sequences.items():
+        if not ops:
+            raise ValueError(f"Job {job_id} has no operations")
+        
         operations: List[Operation] = []
         for idx, op in enumerate(ops):
             if len(op) == 3:
                 machine, duration, label = op  # type: ignore[misc]
-            else:
+            elif len(op) == 2:
                 machine, duration = op  # type: ignore[misc]
                 label = f"Etape {idx + 1}"
+            else:
+                raise ValueError(f"Invalid operation format in job {job_id}: {op}")
+            
+            if duration <= 0:
+                raise ValueError(f"Duration must be positive for {job_id} operation {idx}")
+            
             operations.append(
                 Operation(
                     job_id=job_id,
@@ -187,7 +226,18 @@ def get_instances() -> Dict[str, JobShopInstance]:
 
 
 def instance_horizon(instance: JobShopInstance) -> int:
-    """Upper bound on the schedule horizon (sum of all processing times)."""
+    """Calculate upper bound on the schedule horizon.
+    
+    The horizon is computed as the maximum of:
+    - Sum of all operation and maintenance durations
+    - Latest maintenance end time
+    
+    Args:
+        instance: The job shop instance
+        
+    Returns:
+        int: Conservative upper bound for the schedule timeline
+    """
     op_sum = sum(op.duration for job in instance.jobs for op in job.operations)
     maint_sum = sum(m.duration for m in instance.maintenance)
     maint_far_end = max((m.start + m.duration for m in instance.maintenance), default=0)
