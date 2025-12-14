@@ -20,6 +20,7 @@ wheels/
 .installed.cfg
 *.egg
 
+
 # Virtual Environment
 venv/
 env/
@@ -34,18 +35,48 @@ ENV/
 *~
 .DS_Store
 
-# FastAPI / uvicorn
-*.log
-
-# Environment variables
-.env
-.env.local
+# Jupyter Notebooks
+.ipynb_checkpoints
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+*.cover
+
+# Logs
+*.log
+
+# Output files
+output/*.png
+output/*.pdf
+output/*.json
+
+# Docker
+.docker/
+
+# Environment variables
+.env.local
+.env.production
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Backend
+backend/__pycache__
+backend/*.pyc
+
+# FastAPI / uvicorn
+*.log
 
 # OR-Tools temporary files
 *.mps
 *.lp
+
