@@ -43,6 +43,7 @@ class CSPSolver:
     def __init__(self, word_length: int = 5):
         self.word_length = word_length
         self.word_list: List[str] = []
+        self.secret_word: Optional[str] = None 
 
     def set_valid_words(self, words: List[str]):
         self.word_list = [

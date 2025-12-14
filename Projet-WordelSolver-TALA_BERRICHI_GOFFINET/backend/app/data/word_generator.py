@@ -2,43 +2,51 @@
 import random
 from typing import List
 
-def get_random_word(word_list: List[str]) -> str:
+def choose_secret_candidate(candidates: List[str]) -> str:
     """
-    Retourne un mot aléatoire de la liste donnée.
+    Sélectionne un mot aléatoire (chaîne de 5 lettres) depuis le dictionnaire fourni.
+
+    :param candidates: Liste de mots valides.
+    :return: Mot choisi aléatoirement en majuscules.
     """
-    if not word_list:
-        raise ValueError("La liste de mots est vide.")
-    return random.choice(word_list)
+    if not candidates:
+        raise ValueError("Le dictionnaire de candidats est vide.")
+    return random.choice(candidates).upper()
 
 
-def generate_word(language: str, fr_words: List[str], en_words: List[str]) -> str:
+def choose_secret_word(
+    language: str,
+    fr_candidates: List[str],
+    en_candidates: List[str]
+) -> str:
     """
-    Génère un mot aléatoire selon la langue choisie.
-    language: "fr" ou "en"
+    Sélectionne le mot secret Wordle depuis le dictionnaire
+    correspondant à la langue choisie.
+
+    :param language: "fr" ou "en"
+    :param fr_candidates: Liste de mots français
+    :param en_candidates: Liste de mots anglais
+    :return: Mot secret choisi aléatoirement
     """
     language = language.lower()
+
     if language == "fr":
-        return get_random_word(fr_words)
+        return choose_secret_candidate(fr_candidates)
+
     elif language == "en":
-        return get_random_word(en_words)
+        return choose_secret_candidate(en_candidates)
+
     else:
-        raise ValueError("Langue invalide ! Choisir 'fr' ou 'en'.")
+        raise ValueError("Langue invalide : choisir 'fr' ou 'en'.")
 
 
+# Test rapide si on exécute ce fichier directement
 if __name__ == "__main__":
-    # --- Exemple d'utilisation ---
-    try:
-        from load_fr_word import load_fr_words  # mots français
-        from load_en_word import load_en_words  # mots anglais
+    from load_fr_word import load_fr_words
+    from load_en_word import load_en_words
 
-        # Charger les listes de mots
-        fr_words = load_fr_words()
-        en_words = load_en_words()
+    fr_words = load_fr_words()
+    en_words = load_en_words()
 
-        # Demander à l'utilisateur la langue
-        user_lang = input("Choisissez la langue (fr/en) : ").strip().lower()
-        mot_secret = generate_word(user_lang, fr_words, en_words)
-        print(f"Mot secret généré ({user_lang}): {mot_secret}")
-
-    except Exception as e:
-        print(f"Erreur lors de la génération du mot : {e}")
+    print("Mot secret FR :", choose_secret_word("fr", fr_words, en_words))
+    print("Mot secret EN :", choose_secret_word("en", fr_words, en_words))
