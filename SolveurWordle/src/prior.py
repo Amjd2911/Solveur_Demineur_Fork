@@ -14,19 +14,19 @@ from src.file import (
 # Reading from files
 
 
-def get_word_list(game_name, short=False):
+def get_word_list(game_name, short=False, language="en"):
     result = []
     file = (
-        get_short_word_list_fname(game_name)
+        get_short_word_list_fname(game_name, language=language)
         if short
-        else get_long_word_list_fname(game_name)
+        else get_long_word_list_fname(game_name, language=language)
     )
     with Path(file).open(encoding="utf8") as fp:
         result.extend([word.strip() for word in fp])
     return result
 
 
-def get_word_frequencies(game_name, regenerate=False):
+def get_word_frequencies(game_name, regenerate=False, language="en"):
     word_freq_map_fname = get_word_freq_map_fname(game_name)
     if Path(word_freq_map_fname).exists() or regenerate:
         with Path(word_freq_map_fname).open(encoding="utf8") as fp:
@@ -44,7 +44,7 @@ def get_word_frequencies(game_name, regenerate=False):
     return freq_map
 
 
-def get_frequency_based_priors(game_name, n_common=3000, width_under_sigmoid=10):
+def get_frequency_based_priors(game_name, n_common=3000, width_under_sigmoid=10, language="en"):
     """
     We know that that list of wordle answers was curated by some human
     based on whether they're sufficiently common. This function aims
@@ -53,7 +53,7 @@ def get_frequency_based_priors(game_name, n_common=3000, width_under_sigmoid=10)
 
     Sort the words by frequency, then apply a sigmoid along it.
     """
-    freq_map = get_word_frequencies(game_name)
+    freq_map = get_word_frequencies(game_name, language=language)
     words = np.array(list(freq_map.keys()))
     freq = np.array([freq_map[w] for w in words])
     arg_sort = freq.argsort()
@@ -71,7 +71,7 @@ def get_frequency_based_priors(game_name, n_common=3000, width_under_sigmoid=10)
     return priors
 
 
-def get_true_wordle_prior(game_name):
-    words = get_word_list(game_name)
-    short_words = get_word_list(game_name, short=True)
+def get_true_wordle_prior(game_name, language="en"):
+    words = get_word_list(game_name, language=language)
+    short_words = get_word_list(game_name, short=True, language=language)
     return {w: int(w in short_words) for w in words}

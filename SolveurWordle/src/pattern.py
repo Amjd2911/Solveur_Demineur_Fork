@@ -17,41 +17,44 @@ PATTERN_GRID_DATA: dict[str, Any] = {}
 # Generating color patterns between strings, etc.
 
 
-def generate_full_pattern_matrix(game_name):
-    words = get_word_list(game_name)
+def generate_full_pattern_matrix(game_name, language="en"):
+    words = get_word_list(game_name, language=language)
     pattern_matrix = generate_full_pattern_matrix_in_blocks(words)
     # Save to file
-    np.save(get_pattern_matrix_fname(game_name), pattern_matrix)
+    np.save(get_pattern_matrix_fname(game_name, language=language), pattern_matrix)
     return pattern_matrix
 
 
-def get_pattern_matrix(words1, words2, game_name):
-    pattern_matrix_fname = get_pattern_matrix_fname(game_name)
-    if not PATTERN_GRID_DATA:
+def get_pattern_matrix(words1, words2, game_name, language="en"):
+    pattern_matrix_fname = get_pattern_matrix_fname(game_name, language=language)
+    if language not in PATTERN_GRID_DATA:
         if not Path(pattern_matrix_fname).exists():
             logger = logging.getLogger(__name__)
             logger.info(
                 "Generating pattern matrix. This takes a minute, but\nthe result will be saved to file so that it only\nneeds to be computed once.",
             )
-            generate_full_pattern_matrix(game_name)
-        PATTERN_GRID_DATA["grid"] = np.load(pattern_matrix_fname)
-        PATTERN_GRID_DATA["words_to_index"] = dict(
-            zip(get_word_list(game_name), itertools.count(), strict=False),
-        )
+            generate_full_pattern_matrix(game_name, language=language)
+        
+        PATTERN_GRID_DATA[language] = {
+            "grid": np.load(pattern_matrix_fname),
+            "words_to_index": dict(
+                zip(get_word_list(game_name, language=language), itertools.count(), strict=False),
+            )
+        }
 
-    full_grid = PATTERN_GRID_DATA["grid"]
-    words_to_index = PATTERN_GRID_DATA["words_to_index"]
+    full_grid = PATTERN_GRID_DATA[language]["grid"]
+    words_to_index = PATTERN_GRID_DATA[language]["words_to_index"]
 
     indices1 = [words_to_index[w] for w in words1]
     indices2 = [words_to_index[w] for w in words2]
     return full_grid[np.ix_(indices1, indices2)]
 
 
-def get_pattern(guess, answer, game_name):
-    if PATTERN_GRID_DATA:
-        saved_words = PATTERN_GRID_DATA["words_to_index"]
+def get_pattern(guess, answer, game_name, language="en"):
+    if language in PATTERN_GRID_DATA:
+        saved_words = PATTERN_GRID_DATA[language]["words_to_index"]
         if guess in saved_words and answer in saved_words:
-            return get_pattern_matrix([guess], [answer], game_name)[0, 0]
+            return get_pattern_matrix([guess], [answer], game_name, language=language)[0, 0]
     return generate_pattern_matrix([guess], [answer])[0, 0]
 
 
@@ -73,14 +76,14 @@ def patterns_to_string(patterns):
     return "\n".join(map(pattern_to_string, patterns))
 
 
-def get_possible_words(guess, pattern, word_list, game_name):
-    all_patterns = get_pattern_matrix([guess], word_list, game_name).flatten()
+def get_possible_words(guess, pattern, word_list, game_name, language="en"):
+    all_patterns = get_pattern_matrix([guess], word_list, game_name, language=language).flatten()
     return [str(w) for w in np.array(word_list)[all_patterns == pattern]]
 
 
-def get_word_buckets(guess, possible_words, game_name):
+def get_word_buckets(guess, possible_words, game_name, language="en"):
     buckets = [[] for _x in range(3**5)]
-    hashes = get_pattern_matrix([guess], possible_words, game_name).flatten()
+    hashes = get_pattern_matrix([guess], possible_words, game_name, language=language).flatten()
     for index, word in zip(hashes, possible_words, strict=True):
         buckets[index].append(word)
     return buckets

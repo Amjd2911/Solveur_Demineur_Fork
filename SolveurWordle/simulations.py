@@ -37,9 +37,10 @@ def simulate_games(
     results_file=None,
     next_guess_map_file=None,
     quiet=False,
+    language="en",
 ):
-    all_words = get_word_list(game_name, short=False)
-    short_word_list = get_word_list(game_name, short=True)
+    all_words = get_word_list(game_name, short=False, language=language)
+    short_word_list = get_word_list(game_name, short=True, language=language)
 
     if first_guess is None:
         first_guess = optimal_guess(
@@ -50,10 +51,11 @@ def simulate_games(
             look_two_ahead=look_two_ahead,
             purely_maximize_information=purely_maximize_information,
             optimize_for_uniform_distribution=optimize_for_uniform_distribution,
+            language=language,
         )
 
     if priors is None:
-        priors = get_frequency_based_priors(game_name)
+        priors = get_frequency_based_priors(game_name, language=language)
 
     if test_set is None or (len(test_set) > 0 and test_set[0] is None):
         test_set = short_word_list
@@ -78,7 +80,7 @@ def simulate_games(
             choices = all_words
             if hard_mode:
                 for guess, pattern in zip(guesses, patterns, strict=True):
-                    choices = get_possible_words(guess, pattern, choices, game_name)
+                    choices = get_possible_words(guess, pattern, choices, game_name, language=language)
             if brute_force_optimize:
                 next_guess_map[phash] = brute_force_optimal_guess(
                     choices,
@@ -86,6 +88,7 @@ def simulate_games(
                     priors,
                     game_name=game_name,
                     n_top_picks=brute_force_depth,
+                    language=language,
                 )
             else:
                 next_guess_map[phash] = optimal_guess(
@@ -96,6 +99,7 @@ def simulate_games(
                     look_two_ahead=look_two_ahead,
                     purely_maximize_information=purely_maximize_information,
                     optimize_for_uniform_distribution=optimize_for_uniform_distribution,
+                    language=language,
                 )
         return next_guess_map[phash]
 
@@ -121,10 +125,10 @@ def simulate_games(
         score = 1
         guess = first_guess
         while guess != answer:
-            pattern = get_pattern(guess, answer, game_name)
+            pattern = get_pattern(guess, answer, game_name, language=language)
             guesses.append(guess)
             patterns.append(pattern)
-            possibilities = get_possible_words(guess, pattern, possibilities, game_name)
+            possibilities = get_possible_words(guess, pattern, possibilities, game_name, language=language)
             possibility_counts.append(len(possibilities))
             score += 1
             guess = get_next_guess(guesses, patterns, possibilities)
@@ -198,12 +202,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run Wordle simulations.")
     parser.add_argument("--word", type=str, default=None, help="A specific word to test against.")
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        choices=["en", "fr"],
+        help="Language of the word list.",
+    )
     args = parser.parse_args()
 
     test_set = None
     if args.word:
         # Validate word
-        all_words = get_word_list("wordle", short=False)
+        all_words = get_word_list("wordle", short=False, language=args.language)
         if args.word not in all_words:
             print(f"Error: '{args.word}' is not a valid word.", file=sys.stderr)
             sys.exit(1)
@@ -212,8 +223,9 @@ if __name__ == "__main__":
     print("--- Running standard Wordle simulation ---")
     results, decision_map = simulate_games(
         game_name="wordle",
-        priors=get_true_wordle_prior("wordle"),
+        priors=get_true_wordle_prior("wordle", language=args.language),
         test_set=test_set,
+        language=args.language,
     )
     print("\n--- Simulation Complete ---")
     print(f"Average Score: {results['average_score']:.2f}")

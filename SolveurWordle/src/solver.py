@@ -46,11 +46,12 @@ def get_expected_scores(
     game_name,
     look_two_ahead=False,
     n_top_candidates_for_two_step=25,
+    language="en",
 ):
     # Currently entropy of distribution
     weights = get_weights(possible_words, priors)
     h0 = entropy_of_distributions(weights)
-    h1s = get_entropies(allowed_words, possible_words, weights, game_name)
+    h1s = get_entropies(allowed_words, possible_words, weights, game_name, language=language)
 
     word_to_weight = dict(zip(possible_words, weights, strict=True))
     probs = np.array([word_to_weight.get(w, 0) for w in allowed_words])
@@ -66,7 +67,7 @@ def get_expected_scores(
     # This is currently quite slow, and could be optimized to be faster.
     # But why?
     sorted_indices = np.argsort(expected_scores)
-    allowed_second_guesses = get_word_list(game_name)
+    allowed_second_guesses = get_word_list(game_name, language=language)
     expected_scores += 1  # Push up the rest
     for i in tqdm(
         sorted_indices[:n_top_candidates_for_two_step],
@@ -74,8 +75,8 @@ def get_expected_scores(
     ):
         guess = allowed_words[i]
         h1 = h1s[i]
-        dist = get_pattern_distributions([guess], possible_words, weights, game_name)[0]
-        buckets = get_word_buckets(guess, possible_words, game_name)
+        dist = get_pattern_distributions([guess], possible_words, weights, game_name, language=language)[0]
+        buckets = get_word_buckets(guess, possible_words, game_name, language=language)
         second_guesses = [
             optimal_guess(
                 allowed_second_guesses,
@@ -83,11 +84,12 @@ def get_expected_scores(
                 priors,
                 game_name=game_name,
                 look_two_ahead=False,
+                language=language,
             )
             for bucket in buckets
         ]
         h2s = [
-            get_entropies([guess2], bucket, get_weights(bucket, priors), game_name)[0]
+            get_entropies([guess2], bucket, get_weights(bucket, priors), game_name, language=language)[0]
             for guess2, bucket in zip(second_guesses, buckets, strict=True)
         ]
 
@@ -119,13 +121,13 @@ def get_expected_scores(
     return expected_scores
 
 
-def get_score_lower_bounds(allowed_words, possible_words, game_name):
+def get_score_lower_bounds(allowed_words, possible_words, game_name, language="en"):
     """
     Assuming a uniform distribution on how likely each element
     of possible_words is, this gives a lower bound on the
     possible score for each word in allowed_words
     """
-    bucket_counts = get_bucket_counts(allowed_words, possible_words, game_name)
+    bucket_counts = get_bucket_counts(allowed_words, possible_words, game_name, language=language)
     n = len(possible_words)
     # Probabilities of getting it in 1
     p1s = np.array([w in possible_words for w in allowed_words]) / n
@@ -144,12 +146,13 @@ def optimal_guess(
     look_two_ahead=False,
     optimize_for_uniform_distribution=False,
     purely_maximize_information=False,
+    language="en",
 ):
     if purely_maximize_information:
         if len(possible_words) == 1:
             return possible_words[0]
         weights = get_weights(possible_words, priors)
-        entropies = get_entropies(allowed_words, possible_words, weights, game_name)
+        entropies = get_entropies(allowed_words, possible_words, weights, game_name, language=language)
         return allowed_words[np.argmax(entropies)]
 
     # Just experimenting here...
@@ -158,6 +161,7 @@ def optimal_guess(
             allowed_words,
             possible_words,
             game_name,
+            language=language,
         )
     else:
         expected_scores = get_expected_scores(
@@ -166,6 +170,7 @@ def optimal_guess(
             priors,
             game_name=game_name,
             look_two_ahead=look_two_ahead,
+            language=language,
         )
     return allowed_words[np.argmin(expected_scores)]
 
@@ -177,6 +182,7 @@ def brute_force_optimal_guess(
     game_name,
     n_top_picks=10,
     display_progress=False,
+    language="en",
 ):
     if len(possible_words) == 0:
         # Doesn't matter what to return in this case, so just default to first word in list.
@@ -184,7 +190,7 @@ def brute_force_optimal_guess(
     # For the suggestions with the top expected scores, just
     # actually play the game out from this point to see what
     # their actual scores are, and minimize.
-    expected_scores = get_score_lower_bounds(all_words, possible_words, game_name)
+    expected_scores = get_score_lower_bounds(all_words, possible_words, game_name, language=language)
     top_choices = [all_words[i] for i in np.argsort(expected_scores)[:n_top_picks]]
     true_average_scores = []
     if display_progress:
@@ -205,9 +211,10 @@ def brute_force_optimal_guess(
             while guess != answer:
                 possibilities = get_possible_words(
                     guess,
-                    get_pattern(guess, answer, game_name),
+                    get_pattern(guess, answer, game_name, language=language),
                     possibilities,
                     game_name,
+                    language=language,
                 )
                 # Make recursive? If so, we'd want to keep track of
                 # the next_guess map and pass it down in the recursive
@@ -218,6 +225,7 @@ def brute_force_optimal_guess(
                     priors,
                     game_name=game_name,
                     optimize_for_uniform_distribution=True,
+                    language=language,
                 )
                 score += 1
             scores.append(score)

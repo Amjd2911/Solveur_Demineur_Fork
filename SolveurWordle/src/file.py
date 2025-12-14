@@ -20,12 +20,18 @@ def get_data_fname(game_name, file):
     return get_data_dir(game_name) / file
 
 
-def get_short_word_list_fname(game_name):
-    return get_data_fname(game_name, SHORT_WORD_LIST_FILE)
+def get_short_word_list_fname(game_name, language="en"):
+    file_name = SHORT_WORD_LIST_FILE
+    if language == "fr":
+        file_name = file_name.replace(".txt", "_fr.txt")
+    return get_data_fname(game_name, file_name)
 
 
-def get_long_word_list_fname(game_name):
-    return get_data_fname(game_name, LONG_WORD_LIST_FILE)
+def get_long_word_list_fname(game_name, language="en"):
+    file_name = LONG_WORD_LIST_FILE
+    if language == "fr":
+        file_name = file_name.replace(".txt", "_fr.txt")
+    return get_data_fname(game_name, file_name)
 
 
 def get_word_freq_fname(game_name):
@@ -36,8 +42,11 @@ def get_word_freq_map_fname(game_name):
     return get_data_fname(game_name, WORD_FREQ_MAP_FILE)
 
 
-def get_pattern_matrix_fname(game_name):
-    return get_data_fname(game_name, PATTERN_MATRIX_FILE)
+def get_pattern_matrix_fname(game_name, language="en"):
+    file_name = PATTERN_MATRIX_FILE
+    if language == "fr":
+        file_name = file_name.replace(".npy", "_fr.npy")
+    return get_data_fname(game_name, file_name)
 
 
 def get_simulation_results_folder(game_name):
