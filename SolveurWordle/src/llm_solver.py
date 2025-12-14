@@ -80,7 +80,7 @@ class LLMSolver:
                 break
         
         print("LLM failed to provide a valid guess. Falling back to a simple strategy.")
-        return self._fallback_guess(history)
+        raise RuntimeError("LLM failed to provide a valid guess after multiple attempts.")
 
 
     def _construct_prompt(self, history):
@@ -99,12 +99,12 @@ class LLMSolver:
             "Secret word: 'APPLE'\n"
             "History:\n"
             "- Guess: 'CRANE', Pattern: 'bbbyb'\n"
-            "- Guess: 'PULLY', Pattern: 'ybbbb'\n"
+            "- Guess: 'PULLY', Pattern: 'ybbbb'\n\n"
             "Based on this, a good next guess would be 'APPLE'.\n\n"
         )
 
         if not history:
-            prompt += "No guesses have been made yet. Suggest a good starting word like 'raise' or 'soare'.\n"
+            prompt += "No guesses have been made yet.\n"
         else:
             prompt += "Here is the history of guesses so far:\n"
             for guess, pattern in history:
