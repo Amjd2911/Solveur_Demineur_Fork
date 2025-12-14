@@ -1,17 +1,14 @@
-"""Data definitions and preloaded Job-Shop instances."""
+"""Data definitions and preloaded Job-Shop scenarios."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union
 
-# Type aliases for better readability
 OperationTuple = Union[Tuple[str, int], Tuple[str, int, str]]
 JobSequences = Dict[str, List[OperationTuple]]
 
 
 @dataclass(frozen=True)
 class OperationSpec:
-    """Specification of an operation before assigning an identifier."""
-
     machine: str
     duration: int
 
@@ -23,7 +20,7 @@ class Operation:
     machine: str
     duration: int
     label: str
-    setup_time: int = 0  # Time needed to prepare machine for this operation
+    setup_time: int = 0
 
 
 @dataclass(frozen=True)
@@ -32,17 +29,17 @@ class MaintenanceWindow:
     start: int
     duration: int
     label: str = "Maintenance"
-    is_recurring: bool = False  # For recurring maintenance
-    recurrence_interval: Optional[int] = None  # Repeat every N time units
+    is_recurring: bool = False
+    recurrence_interval: Optional[int] = None
 
 
 @dataclass(frozen=True)
 class Job:
     job_id: str
     operations: List[Operation]
-    priority: int = 3  # 1=critical, 2=high, 3=normal, 4=low
-    deadline: Optional[int] = None  # Must finish before this time
-    release_time: int = 0  # Can't start before this time
+    priority: int = 3
+    deadline: Optional[int] = None
+    release_time: int = 0
 
 
 @dataclass(frozen=True)
@@ -52,8 +49,8 @@ class JobShopInstance:
     machines: List[str]
     description: str
     maintenance: List[MaintenanceWindow] = field(default_factory=list)
-    created_at: Optional[str] = None  # Timestamp for custom instances
-    is_custom: bool = False  # Distinguish user-created from built-in
+    created_at: Optional[str] = None
+    is_custom: bool = False
 
 
 def _make_instance(
@@ -62,31 +59,11 @@ def _make_instance(
     description: str,
     maintenance: Optional[List[MaintenanceWindow]] = None,
 ) -> JobShopInstance:
-    """Expand a dictionary of operation sequences into a full instance.
-    
-    Args:
-        name: Unique identifier for the instance
-        job_sequences: Mapping of job IDs to their operation sequences
-        description: Human-readable description of the instance
-        maintenance: Optional list of maintenance windows
-        
-    Returns:
-        JobShopInstance: Complete instance ready for solving
-        
-    Raises:
-        ValueError: If job_sequences is empty or contains invalid data
-    """
     if not job_sequences:
         raise ValueError("job_sequences cannot be empty")
-    
-    if not name.strip():
-        raise ValueError("name cannot be empty")
     jobs: List[Job] = []
     machine_set = set()
     for job_id, ops in job_sequences.items():
-        if not ops:
-            raise ValueError(f"Job {job_id} has no operations")
-        
         operations: List[Operation] = []
         for idx, op in enumerate(ops):
             if len(op) == 3:
@@ -96,10 +73,8 @@ def _make_instance(
                 label = f"Etape {idx + 1}"
             else:
                 raise ValueError(f"Invalid operation format in job {job_id}: {op}")
-            
             if duration <= 0:
                 raise ValueError(f"Duration must be positive for {job_id} operation {idx}")
-            
             operations.append(
                 Operation(
                     job_id=job_id,
@@ -109,135 +84,163 @@ def _make_instance(
                     label=label,
                 )
             )
+            machine_set.add(machine)
         jobs.append(Job(job_id=job_id, operations=operations))
-        for op in ops:
-            machine_set.add(op[0])
 
     machines = sorted(machine_set)
     return JobShopInstance(
-        name=name, jobs=jobs, machines=machines, description=description, maintenance=maintenance or []
+        name=name,
+        jobs=jobs,
+        machines=machines,
+        description=description,
+        maintenance=maintenance or [],
     )
+
+
+def _build_rush(total: int, express: int = 20, click_collect: int = 30) -> JobSequences:
+    jobs: JobSequences = {}
+    for i in range(1, express + 1):
+        jobs[f"Express #{i:03d}"] = [
+            ("Reception", 1, "Reception express"),
+            ("Tri prioritaire", 1, "Tri express"),
+            ("Picking zone B", 2, "Picking express"),
+            ("Controle qualite", 1, "QC express"),
+            ("Etiquetage", 1, "Etiquette express"),
+            ("Tri tournee", 1, "Affectation rapide"),
+            ("Chargement quai", 1, "Chargement prioritaire"),
+        ]
+    for i in range(1, click_collect + 1):
+        jobs[f"ClickCollect #{i:03d}"] = [
+            ("Reception", 1, "Reception commande"),
+            ("Tri standard", 1, "Tri C&C"),
+            ("Picking zone B", 2, "Picking rapide"),
+            ("Kitting", 2, "Assemblage commande"),
+            ("Controle qualite", 1, "QC C&C"),
+            ("Etiquetage", 1, "Etiquette retrait"),
+            ("Zone retrait", 1, "Depot casier"),
+        ]
+    store_count = max(total - express - click_collect, 0)
+    for i in range(1, store_count + 1):
+        jobs[f"Magasin #{i:03d}"] = [
+            ("Reception", 2, "Reception palette"),
+            ("Tri standard", 2, "Tri magasin"),
+            ("Picking zone A", 3, "Picking volumineux"),
+            ("Kitting", 3, "Assemblage palette"),
+            ("Controle qualite", 2, "QC complet"),
+            ("Etiquetage", 1, "Etiquette magasin"),
+            ("Filmage palette", 2, "Filmage"),
+            ("Tri tournee", 2, "Affectation tournee"),
+            ("Chargement quai", 2, "Chargement camion"),
+        ]
+    return jobs
 
 
 def get_instances() -> Dict[str, JobShopInstance]:
-    """Provide a dictionary of named, ready-to-use instances."""
-    fulfillment = _make_instance(
-        name="preparation_commandes",
-        job_sequences={
-            "Commande e-commerce #A12": [
-                ("Station de picking", 3, "Picking rayon"),
-                ("Cellule d'emballage", 4, "Emballage carton"),
-                ("Imprimante etiquette", 2, "Etiquetage + scan"),
+    """Provide a dictionary of named, ready-to-use scenarios."""
+
+    def base_steps(include_flash: bool = False) -> JobSequences:
+        steps: JobSequences = {
+            "Commande retail #R01": [
+                ("Reception", 2, "Reception palette"),
+                ("Tri standard", 2, "Tri zone magasin"),
+                ("Picking zone A", 3, "Picking rayon sec"),
+                ("Kitting", 2, "Assemblage lot"),
+                ("Controle qualite", 2, "QC visuel"),
+                ("Etiquetage", 1, "Etiquette BL"),
+                ("Emballage", 3, "Carton + calage"),
+                ("Filmage palette", 2, "Film et cerclage"),
+                ("Tri tournee", 2, "Affectation tournee"),
+                ("Chargement quai", 2, "Chargement quai nord"),
             ],
-            "Commande retail #B07": [
-                ("Station de picking", 4, "Picking palettes"),
-                ("Imprimante etiquette", 1, "Impression BL"),
-                ("Cellule d'emballage", 3, "Filmage + scellage"),
+            "Commande e-commerce #E12": [
+                ("Reception", 1, "Scan colis"),
+                ("Tri standard", 1, "Tri e-commerce"),
+                ("Picking zone B", 3, "Picking petit colis"),
+                ("Controle qualite", 1, "QC express"),
+                ("Etiquetage", 1, "Etiquette transport"),
+                ("Emballage", 2, "Carton e-commerce"),
+                ("Tri tournee", 1, "Dispatch transporteurs"),
+                ("Chargement quai", 2, "Chargement quai sud"),
             ],
-            "Commande express #C21": [
-                ("Imprimante etiquette", 2, "Etiquettes prioritaires"),
-                ("Station de picking", 2, "Picking rapide"),
-                ("Cellule d'emballage", 3, "Mise en caisse"),
+            "Commande click&collect #C05": [
+                ("Reception", 1, "Reception client"),
+                ("Tri standard", 1, "Tri C&C"),
+                ("Picking zone B", 2, "Picking rapide"),
+                ("Kitting", 2, "Assemblage commande"),
+                ("Controle qualite", 1, "QC C&C"),
+                ("Etiquetage", 1, "Etiquette retrait"),
+                ("Emballage", 2, "Sac ou carton"),
+                ("Zone retrait", 1, "Depot casier"),
             ],
-        },
-        description="Flux realiste: picking, emballage, etiquetage pour 3 commandes simultanees.",
+            "Commande magasin #M20": [
+                ("Reception", 2, "Reception BL"),
+                ("Tri standard", 2, "Tri multi-magasin"),
+                ("Picking zone A", 4, "Picking volumineux"),
+                ("Kitting", 3, "Assemblage palettes"),
+                ("Controle qualite", 2, "QC complet"),
+                ("Etiquetage", 1, "Etiquettes magasin"),
+                ("Filmage palette", 3, "Filmage renforce"),
+                ("Tri tournee", 2, "Dispatch tournees"),
+                ("Chargement quai", 2, "Chargement quai central"),
+            ],
+        }
+        if include_flash:
+            steps["Commande flash #F01"] = [
+                ("Reception", 1, "Reception prioritaire"),
+                ("Tri prioritaire", 1, "Tri express"),
+                ("Picking zone B", 2, "Picking urgence"),
+                ("Controle qualite", 1, "QC express"),
+                ("Etiquetage", 1, "Etiquette prioritaire"),
+                ("Tri tournee", 1, "Dispatch express"),
+                ("Chargement quai", 1, "Chargement prioritaire"),
+            ]
+        return steps
+
+    scenario_normal = _make_instance(
+        name="scenario_normal",
+        job_sequences=base_steps(include_flash=True),
+        description="Scenario normal: flux logistique nominal avec commandes retail/e-commerce/C&C et une commande flash integree.",
     )
 
-    fulfillment_maintenance = _make_instance(
-        name="preparation_commandes_maintenance",
-        job_sequences={
-            "Commande e-commerce #A12": [
-                ("Station de picking", 3, "Picking rayon"),
-                ("Cellule d'emballage", 4, "Emballage carton"),
-                ("Imprimante etiquette", 2, "Etiquetage + scan"),
-            ],
-            "Commande retail #B07": [
-                ("Station de picking", 4, "Picking palettes"),
-                ("Imprimante etiquette", 1, "Impression BL"),
-                ("Cellule d'emballage", 3, "Filmage + scellage"),
-            ],
-            "Commande express #C21": [
-                ("Imprimante etiquette", 2, "Etiquettes prioritaires"),
-                ("Station de picking", 2, "Picking rapide"),
-                ("Cellule d'emballage", 3, "Mise en caisse"),
-            ],
-        },
+    scenario_maintenance = _make_instance(
+        name="scenario_maintenance",
+        job_sequences=base_steps(include_flash=True),
         maintenance=[
-            MaintenanceWindow("Cellule d'emballage", start=2, duration=3, label="Maintenance filmage"),
-            MaintenanceWindow("Imprimante etiquette", start=6, duration=2, label="Recharge papier"),
+            MaintenanceWindow("Emballage", start=4, duration=3, label="Maintenance scelleuse"),
+            MaintenanceWindow("Etiquetage", start=8, duration=2, label="Recharge consommables"),
+            MaintenanceWindow("Chargement quai", start=12, duration=3, label="Occupation quai"),
         ],
-        description="Scenarion avec maintenance planifiee: station d'emballage et imprimante indisponibles sur des fenetres.",
+        description="Scenario normal avec maintenance planifiee (emballage, etiquetage, quai).",
     )
 
-    fulfillment_rush = _make_instance(
-        name="preparation_commandes_rush",
-        job_sequences={
-            "Commande e-commerce #A12": [
-                ("Station de picking", 3, "Picking rayon"),
-                ("Cellule d'emballage", 4, "Emballage carton"),
-                ("Imprimante etiquette", 2, "Etiquetage + scan"),
-            ],
-            "Commande retail #B07": [
-                ("Station de picking", 4, "Picking palettes"),
-                ("Imprimante etiquette", 1, "Impression BL"),
-                ("Cellule d'emballage", 3, "Filmage + scellage"),
-            ],
-            "Commande express #C21": [
-                ("Imprimante etiquette", 2, "Etiquettes prioritaires"),
-                ("Station de picking", 2, "Picking rapide"),
-                ("Cellule d'emballage", 3, "Mise en caisse"),
-            ],
-            "Commande flash #R99": [
-                ("Imprimante etiquette", 1, "Etiquette prioritaire"),
-                ("Station de picking", 2, "Picking urgence"),
-                ("Cellule d'emballage", 2, "Emballage express"),
-            ],
-        },
-        description="Scenario avec commande flash R99 a insérer en urgence dans le flux.",
+    scenario_rush_150 = _make_instance(
+        name="scenario_rush_150",
+        job_sequences=_build_rush(150),
+        description="Scenario rush 150 commandes (20 express, 30 click&collect, 100 livraisons magasins).",
     )
 
-    didactic = _make_instance(
-        name="didactic_3x3",
-        job_sequences={
-            "Job A": [("M1", 3), ("M2", 2), ("M3", 2)],
-            "Job B": [("M2", 2), ("M3", 1), ("M1", 4)],
-            "Job C": [("M3", 4), ("M1", 3), ("M2", 1)],
-        },
-        description="Instance pedagogique: 3 jobs, 3 machines, ordres entrelaces.",
+    scenario_rush_300 = _make_instance(
+        name="scenario_rush_300",
+        job_sequences=_build_rush(300),
+        description="Scenario rush 300 commandes (20 express, 30 click&collect, 250 livraisons magasins).",
     )
 
-    alternating = _make_instance(
-        name="alternating_3x3",
-        job_sequences={
-            "Job X": [("M1", 2), ("M3", 5), ("M2", 3)],
-            "Job Y": [("M2", 4), ("M1", 1), ("M3", 4)],
-            "Job Z": [("M3", 3), ("M2", 2), ("M1", 6)],
-        },
-        description="Instance alternative pour comparer l'effet des ordres machines.",
+    scenario_rush_450 = _make_instance(
+        name="scenario_rush_450",
+        job_sequences=_build_rush(450),
+        description="Scenario rush 450 commandes (20 express, 30 click&collect, 400 livraisons magasins).",
     )
 
     return {
-        fulfillment.name: fulfillment,
-        fulfillment_maintenance.name: fulfillment_maintenance,
-        fulfillment_rush.name: fulfillment_rush,
-        didactic.name: didactic,
-        alternating.name: alternating,
+        scenario_normal.name: scenario_normal,
+        scenario_maintenance.name: scenario_maintenance,
+        scenario_rush_150.name: scenario_rush_150,
+        scenario_rush_300.name: scenario_rush_300,
+        scenario_rush_450.name: scenario_rush_450,
     }
 
 
 def instance_horizon(instance: JobShopInstance) -> int:
-    """Calculate upper bound on the schedule horizon.
-    
-    The horizon is computed as the maximum of:
-    - Sum of all operation and maintenance durations
-    - Latest maintenance end time
-    
-    Args:
-        instance: The job shop instance
-        
-    Returns:
-        int: Conservative upper bound for the schedule timeline
-    """
     op_sum = sum(op.duration for job in instance.jobs for op in job.operations)
     maint_sum = sum(m.duration for m in instance.maintenance)
     maint_far_end = max((m.start + m.duration for m in instance.maintenance), default=0)

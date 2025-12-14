@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { apiService } from '../services/api';
-import { ChevronDown, Database } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function InstanceSelector() {
@@ -14,12 +14,12 @@ export default function InstanceSelector() {
     setError,
   } = useStore();
 
-  const scenarioLabels: Record<string, string> = {
-    preparation_commandes: '🏭 Baseline: Normal Flow',
-    preparation_commandes_maintenance: '🔧 Maintenance Scenario',
-    preparation_commandes_rush: '⚡ Rush Order',
-    didactic_3x3: '📚 Educational 3x3',
-    alternating_3x3: '🔄 Alternating 3x3',
+      const scenarioLabels: Record<string, string> = {
+    scenario_normal: 'Scenario normal (flux nominal + commande flash)',
+    scenario_maintenance: 'Scenario normal + maintenance',
+    scenario_rush_150: 'Scenario rush 150 commandes',
+    scenario_rush_300: 'Scenario rush 300 commandes',
+    scenario_rush_450: 'Scenario rush 450 commandes',
   };
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function InstanceSelector() {
           )}
           style={{ colorScheme: 'dark' }}
         >
-          <option value="" className="bg-slate-800 text-white">Select an instance...</option>
+          <option value="" className="bg-slate-800 text-white">Selectionner un scenario de production...</option>
           {instances.map((instance) => (
             <option key={instance.name} value={instance.name} className="bg-slate-800 text-white">
               {scenarioLabels[instance.name] || instance.name}

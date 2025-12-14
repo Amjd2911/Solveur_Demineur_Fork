@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store/useStore';
 import { apiService, createWebSocketConnection } from './services/api';
-import Header from './components/Header';
 import StatsOverview from './components/StatsOverview';
 import Sidebar from './components/Sidebar';
 import Welcome from './components/Welcome';

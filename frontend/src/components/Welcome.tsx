@@ -4,20 +4,20 @@ export default function Welcome() {
   const steps = [
     {
       icon: CheckCircle2,
-      title: 'Select an Instance',
-      description: 'Choose a pre-defined scheduling problem from the sidebar.',
+      title: 'Selectionner un scenario de production',
+      description: 'Choisissez un scenario predefini dans le panneau gauche.',
       color: 'text-red-400',
     },
     {
       icon: SlidersHorizontal,
-      title: 'Configure Solver',
-      description: 'Adjust the time limit and number of parallel workers.',
+      title: 'Configurer le solveur',
+      description: 'Ajustez le temps maximal et le nombre de threads CP-SAT.',
       color: 'text-orange-400',
     },
     {
       icon: ArrowRight,
-      title: 'Run Solver',
-      description: 'Click "Solve Instance" to start the optimization process.',
+      title: 'Lancer la resolution',
+      description: 'Cliquez sur \"Lancer le scenario\" pour demarrer le solveur.',
       color: 'text-yellow-400',
     },
     {

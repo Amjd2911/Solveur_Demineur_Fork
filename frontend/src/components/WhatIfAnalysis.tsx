@@ -1,38 +1,62 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GitCompare, Play, BarChart3, TrendingUp } from 'lucide-react';
 import { apiService } from '../services/api';
-import type { InstanceComparison } from '../types';
+import type { InstanceComparison, SolutionResponse } from '../types';
+import { useStore } from '../store/useStore';
 
 export const WhatIfAnalysis: React.FC = () => {
-  const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
+  const { instances } = useStore();
+  const [selectedScenarios, setSelectedScenarios] = useState<string[]>([]);
   const [comparisons, setComparisons] = useState<InstanceComparison[]>([]);
   const [loading, setLoading] = useState(false);
-  const [availableInstances] = useState([
-    'preparation_commandes',
-    'preparation_commandes_maintenance',
-    'preparation_commandes_rush',
-    'didactic_3x3',
-    'alternating_3x3'
-  ]);
+  const [timeLimit, setTimeLimit] = useState<number>(8);
+  const [numWorkers, setNumWorkers] = useState<number>(8);
 
-  const toggleInstance = (instance: string) => {
-    setSelectedInstances(prev =>
-      prev.includes(instance)
-        ? prev.filter(i => i !== instance)
-        : [...prev, instance]
+  const labels = useMemo(
+    () => ({
+      scenario_normal: 'Scenario normal (flux nominal + commande flash)',
+      scenario_maintenance: 'Scenario normal + maintenance',
+      scenario_rush_150: 'Scenario rush 150 commandes',
+      scenario_rush_300: 'Scenario rush 300 commandes',
+      scenario_rush_450: 'Scenario rush 450 commandes',
+    }),
+    []
+  );
+
+  const toggleScenario = (scenario: string) => {
+    setSelectedScenarios((prev) =>
+      prev.includes(scenario)
+        ? prev.filter((s) => s !== scenario)
+        : [...prev, scenario]
     );
   };
 
   const runComparison = async () => {
-    if (selectedInstances.length < 2) {
-      alert('Please select at least 2 instances to compare');
+    if (selectedScenarios.length < 2) {
+      alert('Selectionnez au moins 2 scenarios a comparer');
       return;
     }
-
     setLoading(true);
     try {
-      const response = await apiService.compareInstances(selectedInstances.join(','));
-      setComparisons(response.comparisons);
+      const results: InstanceComparison[] = [];
+      for (const name of selectedScenarios) {
+        const solution: SolutionResponse = await apiService.solveInstance({
+          instance_name: name,
+          time_limit: timeLimit > 0 ? timeLimit : undefined,
+          num_workers: numWorkers,
+        });
+        const jobs = new Set(solution.operations.map((op) => op.job_id));
+        const machines = new Set(solution.operations.map((op) => op.machine));
+        results.push({
+          name,
+          status: solution.status,
+          makespan: solution.makespan,
+          num_jobs: jobs.size,
+          num_machines: machines.size,
+          wall_time: solution.solver_statistics.wall_time || 0,
+        });
+      }
+      setComparisons(results);
     } catch (error) {
       console.error('Error running comparison:', error);
       alert('Failed to run comparison');
@@ -55,23 +79,23 @@ export const WhatIfAnalysis: React.FC = () => {
     <div className="glass-panel p-8 max-w-6xl mx-auto animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
         <GitCompare className="text-purple-400" size={32} />
-        <h2 className="text-3xl font-bold gradient-text">What-If Analysis</h2>
+        <h2 className="text-3xl font-bold gradient-text">Analyse What-If</h2>
       </div>
 
       <p className="text-white/70 mb-6">
-        Compare multiple scheduling scenarios side-by-side to find the optimal solution for your needs.
+        Comparez plusieurs scenarios de production avec des parametres de solveur pour analyser l'impact du temps max et des threads CP-SAT.
       </p>
 
-      {/* Instance Selection */}
+      {/* Scenario Selection */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3">Select Instances to Compare</h3>
+        <h3 className="text-lg font-semibold mb-3">Selectionner des scenarios de production a comparer</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {availableInstances.map((instance) => (
+          {instances.map((inst) => (
             <button
-              key={instance}
-              onClick={() => toggleInstance(instance)}
+              key={inst.name}
+              onClick={() => toggleScenario(inst.name)}
               className={`p-4 rounded-xl border-2 transition-all duration-300 text-left ${
-                selectedInstances.includes(instance)
+                selectedScenarios.includes(inst.name)
                   ? 'border-purple-500 bg-purple-500/20'
                   : 'border-white/20 bg-white/5 hover:bg-white/10'
               }`}
@@ -79,32 +103,65 @@ export const WhatIfAnalysis: React.FC = () => {
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={selectedInstances.includes(instance)}
-                  onChange={() => toggleInstance(instance)}
+                  checked={selectedScenarios.includes(inst.name)}
+                  onChange={() => toggleScenario(inst.name)}
                   className="w-4 h-4"
                 />
-                <span className="font-medium">{instance}</span>
+                <span className="font-medium">{labels[inst.name as keyof typeof labels] || inst.name}</span>
               </div>
             </button>
           ))}
         </div>
       </div>
 
+      {/* Solver parameters */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-semibold text-white mb-2">
+            Temps maximal du solveur (secondes)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={120}
+            step={0.5}
+            value={timeLimit}
+            onChange={(e) => setTimeLimit(parseFloat(e.target.value))}
+            className="input-field"
+          />
+          <p className="text-xs text-white/60 mt-1">0 = illimite. S'applique a tous les scenarios compares.</p>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-white mb-2">
+            Threads CP-SAT (workers)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={16}
+            value={numWorkers}
+            onChange={(e) => setNumWorkers(parseInt(e.target.value))}
+            className="input-field"
+          />
+          <p className="text-xs text-white/60 mt-1">Min 1, max 16. Threads de recherche CP-SAT (puissance de calcul).</p>
+        </div>
+      </div>
+
       {/* Run Comparison Button */}
       <button
         onClick={runComparison}
-        disabled={loading || selectedInstances.length < 2}
+        disabled={loading || selectedScenarios.length < 2}
         className="btn-primary w-full flex items-center justify-center gap-2 py-4 mb-8 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <>
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            <span>Running Comparison...</span>
+            <span>Comparaison en cours...</span>
           </>
         ) : (
           <>
             <Play size={24} />
-            <span>Compare Selected Instances ({selectedInstances.length})</span>
+              <span>Comparer les scenarios selectionnes ({selectedScenarios.length})</span>
           </>
         )}
       </button>
@@ -151,7 +208,7 @@ export const WhatIfAnalysis: React.FC = () => {
             <table className="w-full">
               <thead className="bg-white/10">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Instance</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold">Scenario</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold">Status</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold">Makespan</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold">Jobs</th>

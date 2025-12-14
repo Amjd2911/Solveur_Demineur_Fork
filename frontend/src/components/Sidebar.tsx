@@ -10,7 +10,7 @@ export default function Sidebar() {
           <div className="bg-gradient-to-br from-red-500 to-orange-500 p-2 rounded-xl shadow-lg">
             <Database className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-white">1. Select Instance</h2>
+          <h2 className="text-xl font-bold text-white">1. Selectionner un scenario de production</h2>
         </div>
         <InstanceSelector />
       </div>
@@ -20,7 +20,7 @@ export default function Sidebar() {
           <div className="bg-gradient-to-br from-orange-500 to-yellow-500 p-2 rounded-xl shadow-lg">
             <SlidersHorizontal className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-white">2. Configure Solver</h2>
+          <h2 className="text-xl font-bold text-white">2. Configurer le solveur</h2>
         </div>
         <SolverControls />
       </div>

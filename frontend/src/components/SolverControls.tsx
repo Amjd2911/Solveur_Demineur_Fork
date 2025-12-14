@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { apiService } from '../services/api';
-import { Play, Settings } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 export default function SolverControls() {
   const { selectedInstance, setSolution, setError, setSolving } = useStore();
@@ -38,7 +38,7 @@ export default function SolverControls() {
         {/* Time Limit */}
         <div>
           <label className="block text-sm font-semibold text-white/90 mb-2">
-            Time Limit (seconds)
+            Temps maximal du solveur (secondes)
           </label>
           <input
             type="number"
@@ -50,14 +50,14 @@ export default function SolverControls() {
             className="input-field"
           />
           <p className="text-xs text-white/60 mt-1">
-            Set to 0 for unlimited time
+            0 = illimite. C'est le temps donne au solveur CP-SAT pour chercher.
           </p>
         </div>
 
         {/* Number of Workers */}
         <div>
           <label className="block text-sm font-semibold text-white/90 mb-2">
-            Parallel Workers
+            Workers CP-SAT (threads)
           </label>
           <input
             type="number"
@@ -68,7 +68,7 @@ export default function SolverControls() {
             className="input-field"
           />
           <p className="text-xs text-white/60 mt-1">
-            Number of parallel search workers (1-16)
+            Nombre de threads de recherche CP-SAT (puissance de calcul, pas des employes).
           </p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function SolverControls() {
           className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play className="w-4 h-4" />
-          Solve Instance
+          Lancer le scenario
         </button>
       </div>
     </div>

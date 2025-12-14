@@ -7,7 +7,7 @@ export default function StatsOverview() {
   const stats = [
     {
       icon: Activity,
-      label: 'Available Instances',
+      label: 'Scenarios disponibles',
       value: instances.length,
       color: 'from-blue-500 to-cyan-500',
       glow: 'shadow-blue-500/50',

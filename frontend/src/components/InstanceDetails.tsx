@@ -12,14 +12,14 @@ export default function InstanceDetails() {
         <div className="bg-gradient-to-br from-cyan-500 to-blue-500 p-2 rounded-xl shadow-lg">
           <Info className="w-5 h-5 text-white" />
         </div>
-        <h2 className="text-xl font-bold text-white">Instance Details</h2>
+        <h2 className="text-xl font-bold text-white">Details du scenario de production</h2>
       </div>
 
       <p className="text-white/80 mb-4 font-medium">{instanceDetails.description}</p>
 
       {/* Machines */}
       <div className="mb-4">
-        <h3 className="text-sm font-bold text-white mb-3">Resources / Machines</h3>
+        <h3 className="text-sm font-bold text-white mb-3">Ressources / Machines</h3>
         <div className="flex flex-wrap gap-2">
           {instanceDetails.machines.map((machine) => (
             <span
@@ -35,7 +35,7 @@ export default function InstanceDetails() {
       {/* Jobs */}
       <div className="mb-4">
         <h3 className="text-sm font-bold text-white mb-3">
-          Jobs ({instanceDetails.jobs.length})
+          Commandes ({instanceDetails.jobs.length})
         </h3>
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {instanceDetails.jobs.map((job) => (

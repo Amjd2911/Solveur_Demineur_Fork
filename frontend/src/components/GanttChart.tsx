@@ -286,7 +286,7 @@ export default function GanttChart() {
 
       {/* Time axis label */}
       <div className="text-center mt-4 text-sm text-white/70 font-semibold">
-        ⏱️ Time (units)
+        Temps (unites)
       </div>
     </div>
   );
