@@ -1,20 +1,37 @@
-import ollama
+import google.generativeai as genai
+import os
 import re
 import random
 from src.prior import get_word_list
+from dotenv import load_dotenv
+import ollama
+
+load_dotenv()
 
 class LLMSolver:
-    def __init__(self, host=None, game_name="wordle", model_name="llama3"):
+    def __init__(self, game_name="wordle", model_name="gemini-pro", model_type="gemini", host=None):
         """
-        Initializes the LLMSolver using the ollama library.
+        Initializes the LLMSolver.
 
-        :param host: The host for the Ollama client, e.g., 'http://localhost:11434'.
         :param game_name: The name of the game, used to fetch the word lists.
-        :param model_name: The name of the Ollama model to use.
+        :param model_name: The name of the LLM model to use.
+        :param model_type: The type of the LLM model ('gemini' or 'ollama').
+        :param host: The host for the Ollama client, e.g., 'http://localhost:11434'.
         """
-        self.client = ollama.Client(host=host)
+        self.model_type = model_type
         self.allowed_words = get_word_list(game_name)
         self.model_name = model_name
+
+        if self.model_type == "gemini":
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY not found in environment variables.")
+            genai.configure(api_key=api_key)
+            self.client = genai.GenerativeModel(model_name)
+        elif self.model_type == "ollama":
+            self.client = ollama.Client(host=host)
+        else:
+            raise ValueError(f"Unsupported model type: {model_type}. Choose 'gemini' or 'ollama'.")
 
     def get_best_guess(self, history, max_retries=5):
         """
@@ -30,11 +47,15 @@ class LLMSolver:
 
         for attempt in range(max_retries):
             try:
-                response = self.client.chat(
-                    model=self.model_name,
-                    messages=[{'role': 'user', 'content': prompt}],
-                )
-                response_text = response['message']['content']
+                if self.model_type == "gemini":
+                    response = self.client.generate_content(prompt)
+                    response_text = response.text
+                elif self.model_type == "ollama":
+                    response = self.client.chat(
+                        model=self.model_name,
+                        messages=[{'role': 'user', 'content': prompt}],
+                    )
+                    response_text = response['message']['content']
                 
                 # Find all 5-letter words in the response
                 potential_words = re.findall(r'\b[a-zA-Z]{5}\b', response_text.lower())
@@ -49,13 +70,13 @@ class LLMSolver:
 
                 print(f"LLM proposed: '{response_text}'. Found words {potential_words}, but none are in the allowed word list. Retrying...")
 
-            except ollama.ResponseError as e:
-                if e.status_code == 404:
+            except Exception as e:
+                if self.model_type == "ollama" and hasattr(e, 'status_code') and e.status_code == 404:
                     raise ValueError(
                         f"Model '{self.model_name}' not found. "
                         "Please make sure the model is available in your Ollama instance and that you have spelled the name correctly."
                     ) from e
-                print(f"Error calling Ollama API: {e.error}")
+                print(f"Error calling {self.model_type.capitalize()} API: {e}")
                 break
         
         print("LLM failed to provide a valid guess. Falling back to a simple strategy.")

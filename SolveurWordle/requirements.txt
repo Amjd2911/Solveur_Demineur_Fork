@@ -2,3 +2,5 @@ numpy
 scipy
 tqdm
 ollama
+google-generativeai
+python-dotenv

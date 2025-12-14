@@ -7,7 +7,7 @@ from src.pattern import get_pattern
 from src.prior import get_word_list
 from src.llm_solver import LLMSolver
 
-def simulate_llm_games(model_name="gemini-pro"):
+def simulate_llm_games(model_name="llama3"):
     """
     Runs simulated Wordle games using an LLM to make guesses.
     """
@@ -16,7 +16,7 @@ def simulate_llm_games(model_name="gemini-pro"):
     test_set = get_word_list(game_name, short=True)
     
     # Initialize the LLM solver
-    llm_solver = LLMSolver(model_name=model_name, game_name=game_name, model_type="gemini")
+    llm_solver = LLMSolver(model_name=model_name, game_name=game_name, model_type="ollama")
 
     scores = np.zeros(0, dtype=int)
     game_results = []
@@ -67,12 +67,12 @@ def simulate_llm_games(model_name="gemini-pro"):
     return final_result
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Wordle simulations using a Gemini LLM.")
+    parser = argparse.ArgumentParser(description="Run Wordle simulations using a local LLM.")
     parser.add_argument(
         "--model",
         type=str,
-        default="gemini-pro",
-        help="The name of the Gemini model to use (e.g., 'gemini-pro').",
+        default="llama3",
+        help="The name of the Ollama model to use (e.g., 'llama3', 'codellama').",
     )
     args = parser.parse_args()
 
