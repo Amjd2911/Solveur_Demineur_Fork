@@ -60,12 +60,13 @@ class LLMSolver:
         'g' = green, 'y' = yellow, 'b' = black/gray.
         """
         prompt = (
-            "You are a Wordle assistant. Your goal is to guess the secret 5-letter word.\n"
+            "You are a Wordle assistant. Your goal is to guess the secret 5 letter word.\n"
             "Based on the history of guesses and their results (patterns), suggest the best next 5-letter word.\n"
             "The pattern indicates the result for each letter:\n"
             "- 'g': The letter is in the correct position (green).\n"
             "- 'y': The letter is in the word but in the wrong position (yellow).\n"
             "- 'b': The letter is not in the word (black/gray).\n\n"
+            "Make sure your suggestion is a valid English 5-letter word.\n"
             "Here is the history of guesses so far:\n"
         )
 
