@@ -50,21 +50,22 @@ Ce projet est entièrement conteneurisé avec Docker, ce qui simplifie grandemen
 ### Installation
 
 2. **Configuration de l'environnement :**
-   Créez un fichier `.env` à la racine du projet en vous basant sur le fichier `.env.sample`. Il devrait contenir les variables nécessaires pour la base de données :
+   Créez un fichier `.env` à la racine du projet en vous basant sur le fichier `.env.sample`. Il devrait contenir les variables nécessaires pour la base de données et la clé API:
 
    ```env
+
    POSTGRES_USER=user
    POSTGRES_PASSWORD=password
    POSTGRES_DB=debatai
-   ```
 
+   OPENAI_API_KEY=
+   ```
 3. **Lancez l'application :**
    Utilisez Docker Compose pour construire les images et démarrer tous les services.
 
    ```bash
    docker-compose up -d --build
    ```
-
 4. **Accédez à l'application :**
 
    - L'interface frontend est disponible à l'adresse [http://localhost:4200](http://localhost:4200).
