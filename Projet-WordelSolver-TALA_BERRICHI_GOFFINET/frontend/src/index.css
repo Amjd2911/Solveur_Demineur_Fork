@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ===== Light mode ===== */
+    --background: 222 47% 98%;
+    --foreground: 222 47% 11%;
+    --card: 222 47% 92%;
+    --card-foreground: 222 47% 11%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 222 47% 98%;
+    --secondary: 217 33% 80%;
+    --secondary-foreground: 210 40% 11%;
+    --muted: 217 33% 88%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 200 90% 40%;
+    --accent-foreground: 222 47% 11%;
+    --border: 217 33% 85%;
+    --input: 217 33% 88%;
+    --ring: 160 84% 39%;
+    --wordle-correct: 120 60% 45%;
+    --wordle-present: 45 100% 51%;
+    --wordle-absent: 210 10% 80%;
+    --wordle-color: 120 60% 30%; 
+  }
+
+  /* ===== Dark mode ===== */
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 14%;
+    --card-foreground: 210 40% 98%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 22%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 187 92% 50%;
+    --accent-foreground: 222 47% 11%;
+    --border: 217 33% 25%;
+    --input: 217 33% 22%;
+    --ring: 160 84% 39%;
+    --wordle-correct: 120 60% 45%;
+    --wordle-present: 45 100% 51%;
+    --wordle-absent: 210 10% 30%;
+    --wordle-color: 120 70% 60%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+/* ===== Utilities ===== */
+@layer utilities {
+  .font-mono-game {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .glow-correct {
+    box-shadow: 0 0 10px hsl(var(--wordle-correct) / 0.6);
+  }
+
+  .glow-present {
+    box-shadow: 0 0 10px hsl(var(--wordle-present) / 0.6);
+  }
+
+  .text-wordle {
+    color: hsl(var(--wordle-color));
+  }
+}
+
+/* ===== Animations ===== */
+@keyframes popIn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.animate-pop {
+  animation: popIn 0.15s ease-in-out;
+}
