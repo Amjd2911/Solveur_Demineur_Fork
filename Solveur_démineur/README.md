@@ -1,5 +1,9 @@
 # Solveur de Démineur par Programmation par Contraintes
 
+Antonin DUDRAGNE
+Angela YAPI
+Manon BACQUE
+
 ## 🎯 Objectif du Projet
 
 **Développer un solveur automatique du Démineur utilisant la programmation par contraintes (CSP) pour maximiser le taux de victoire sur différentes difficultés de grilles.**
